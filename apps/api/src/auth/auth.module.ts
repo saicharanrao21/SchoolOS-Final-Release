@@ -6,6 +6,11 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { AuditModule } from '../audit/audit.module';
+import { AuthorizationService } from './policy/authorization.service';
+import { DelegationService } from './policy/delegation.service';
+import { PolicyGuard } from './guards/policy.guard';
+import { PermissionsGuard } from './guards/permissions.guard';
+import { AuthorizationAdminController } from './policy/authorization-admin.controller';
 
 @Module({
   imports: [
@@ -19,8 +24,15 @@ import { AuditModule } from '../audit/audit.module';
       }),
     }),
   ],
-  providers: [AuthService, JwtStrategy],
-  controllers: [AuthController],
-  exports: [AuthService],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    AuthorizationService,
+    DelegationService,
+    PolicyGuard,
+    PermissionsGuard,
+  ],
+  controllers: [AuthController, AuthorizationAdminController],
+  exports: [AuthService, AuthorizationService, DelegationService, PolicyGuard, PermissionsGuard],
 })
 export class AuthModule {}
