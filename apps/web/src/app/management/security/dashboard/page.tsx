@@ -1,130 +1,86 @@
-import React from 'react';
-import {
-  ShieldCheck,
-  Users,
-  UserCheck,
-  AlertTriangle,
-  History,
-  Activity,
-  ArrowRight,
-  Plus,
-  QrCode,
-  Bell
-} from 'lucide-react';
+'use client';
 
-export default function SecurityDashboard() {
-  const stats = [
-    { label: 'Visitors Inside', value: '12', change: '8 expected later', icon: Users, color: 'bg-blue-600' },
-    { label: 'Pending Pickups', value: '42', change: 'Bus dispersal in 20m', icon: UserCheck, color: 'bg-indigo-600' },
-    { label: 'Active Incidents', value: '2', change: '1 high severity', icon: AlertTriangle, color: 'bg-red-500' },
-    { label: 'Gate Activity', value: '184', change: 'Last 6 hours', icon: Activity, color: 'bg-green-500' },
+import React, { useState } from 'react';
+import { PageHeader } from '../../../../components/common/PageHeader';
+import { Card } from '../../../../components/common/Card';
+import { StatusBadge } from '../../../../components/common/StatusBadge';
+import { FilterBar } from '../../../../components/common/FilterBar';
+import { ShieldCheck, Users, UserCheck, AlertTriangle, Activity, Plus, QrCode, Bell } from 'lucide-react';
+
+export default function SecurityDashboardPage() {
+  const [search, setSearch] = useState('');
+
+  const mockGateLogs = [
+    { id: '1', person: 'Alice Johnson (Student)', action: 'Student Pickup', gate: 'Main Gate', status: 'VERIFIED', time: '2m ago' },
+    { id: '2', person: 'Robert Smith (Visitor)', action: 'Visitor Entry', gate: 'West Gate', status: 'CHECKED_IN', time: '15m ago' },
+    { id: '3', person: 'Express Courier', action: 'Postal Delivery', gate: 'North Gate', status: 'COMPLETED', time: '45m ago' },
   ];
 
-  return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary">Campus Security</h1>
-          <p className="text-text-secondary text-sm">Monitor entry points, visitors, student release, and safety incidents</p>
-        </div>
-        <div className="flex gap-3">
-           <button className="bg-white border border-surface-border text-text-primary px-4 py-2.5 rounded-button font-bold text-sm hover:bg-surface-background transition-all flex items-center gap-2">
-             <QrCode className="w-4 h-4" />
-             Verify Pass
-           </button>
-           <button className="bg-primary text-white px-5 py-2.5 rounded-button font-bold text-sm shadow-md hover:bg-primary-dark transition-all active:scale-95 flex items-center gap-2">
-             <Plus className="w-4 h-4" />
-             Register Visitor
-           </button>
-        </div>
-      </div>
+  const filtered = mockGateLogs.filter((l) =>
+    `${l.person} ${l.action} ${l.gate}`.toLowerCase().includes(search.toLowerCase()),
+  );
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => (
-          <div key={stat.label} className="bg-white p-6 rounded-card shadow-card border border-surface-border">
-            <div className="flex justify-between items-start mb-4">
-              <div className={`${stat.color} p-3 rounded-xl text-white shadow-lg shadow-current/10`}>
-                <stat.icon className="w-6 h-6" />
-              </div>
-              <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest bg-surface-background px-2 py-0.5 rounded border border-surface-border">
-                {stat.change}
-              </div>
-            </div>
+  return (
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <PageHeader
+        title="Gate Security & Campus Safety Command"
+        subtitle="Monitor campus entry points, visitor gate passes, student release verification, and CCTV feeds"
+        badge="Zero-Trust Gate"
+        badgeVariant="SUCCESS"
+        breadcrumbs={[
+          { label: 'SchoolOS', href: '/management/dashboard' },
+          { label: 'Security' },
+        ]}
+        actions={
+          <div className="flex gap-2">
+            <button className="flex items-center gap-2 bg-white border border-surface-border hover:bg-surface-hover text-text-primary px-4 py-2.5 rounded-xl font-bold text-xs transition-all shadow-sm">
+              <QrCode className="w-4 h-4 text-primary" /> Verify Pass
+            </button>
+            <button className="flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-4 py-2.5 rounded-xl font-bold text-xs transition-all shadow-sm active:scale-95">
+              <Plus className="w-4 h-4" /> Register Visitor
+            </button>
+          </div>
+        }
+      />
+
+      <FilterBar
+        searchQuery={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Filter person, gate, or action..."
+      />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Visitors On Campus', value: '12 Active', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200' },
+          { label: 'Verified Pickups', value: '42 Released', icon: UserCheck, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
+          { label: 'Active Incidents', value: '2 Under Review', icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50 border-red-200' },
+          { label: 'Gate Activity (6h)', value: '184 Passes', icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50 border-purple-200' },
+        ].map((item) => (
+          <div key={item.label} className="bg-white p-5 rounded-2xl border border-surface-border shadow-xs flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-text-muted">{stat.label}</p>
-              <p className="text-3xl font-bold text-text-primary mt-1">{stat.value}</p>
+              <p className="text-xs font-semibold text-text-muted">{item.label}</p>
+              <p className="text-2xl font-bold text-text-primary mt-1">{item.value}</p>
+            </div>
+            <div className={`p-3 rounded-xl border ${item.bg} ${item.color}`}>
+              <item.icon className="w-5 h-5" />
             </div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-         <div className="lg:col-span-2 bg-white rounded-card shadow-card border border-surface-border p-8">
-            <div className="flex items-center justify-between mb-8">
-               <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-primary" />
-                  Live Gate Activity
-               </h3>
-               <span className="flex items-center gap-2 text-xs font-bold text-green-500 bg-green-50 px-3 py-1 rounded-full border border-green-100">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  LIVE FEED
-               </span>
+      <Card title="Live Gate Entry / Exit Activity Stream">
+        <div className="divide-y divide-surface-border text-xs font-medium">
+          {filtered.map((l) => (
+            <div key={l.id} className="py-3 flex items-center justify-between">
+              <div>
+                <p className="font-bold text-text-primary text-sm">{l.person}</p>
+                <p className="text-text-muted">{l.action} • {l.gate} • {l.time}</p>
+              </div>
+              <StatusBadge status={l.status} />
             </div>
-            <div className="space-y-6">
-               {[
-                 { action: 'Student Pickup', person: 'Alice Johnson', gate: 'Main Gate', status: 'VERIFIED', time: '2m ago' },
-                 { action: 'Visitor Entry', person: 'Robert Smith', gate: 'West Gate', status: 'CHECKED IN', time: '15m ago' },
-                 { action: 'Courier Delivery', person: 'Nexus Logi.', gate: 'North Gate', status: 'COMPLETED', time: '45m ago' },
-                 { action: 'Staff Exit', person: 'Mark Davis', gate: 'Main Gate', status: 'OUT', time: '1h ago' },
-               ].map((log, i) => (
-                 <div key={i} className="flex items-center justify-between p-4 hover:bg-surface-background rounded-xl transition-all border border-transparent hover:border-surface-border group">
-                    <div className="flex items-center gap-4">
-                       <div className="w-10 h-10 rounded-full bg-surface-background flex items-center justify-center text-text-primary font-bold text-xs">
-                          {log.person.split(' ').map(n => n[0]).join('')}
-                       </div>
-                       <div>
-                          <p className="text-sm font-bold text-text-primary group-hover:text-primary transition-colors">{log.person}</p>
-                          <p className="text-[10px] text-text-muted font-bold uppercase">{log.action} • {log.gate}</p>
-                       </div>
-                    </div>
-                    <div className="text-right">
-                       <p className="text-xs font-bold text-primary">{log.status}</p>
-                       <p className="text-[10px] text-text-muted">{log.time}</p>
-                    </div>
-                 </div>
-               ))}
-            </div>
-         </div>
-
-         <div className="space-y-6">
-            <div className="bg-white rounded-card shadow-card border border-surface-border p-6 border-l-4 border-l-red-500">
-               <h3 className="font-bold text-text-primary mb-6 flex items-center gap-2">
-                  <Bell className="w-5 h-5 text-red-500" />
-                  Active Incidents
-               </h3>
-               <div className="space-y-5">
-                  {[
-                    { title: 'Unauthorized Gate Entry', sev: 'CRITICAL', loc: 'South Gate' },
-                    { title: 'Minor Medical Issue', sev: 'MEDIUM', loc: 'Playground' },
-                  ].map((inc, i) => (
-                    <div key={i} className="p-4 rounded-xl bg-red-50/30 border border-red-100">
-                       <div className="flex justify-between items-start mb-2">
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${inc.sev === 'CRITICAL' ? 'bg-red-500 text-white' : 'bg-orange-500 text-white'}`}>
-                             {inc.sev}
-                          </span>
-                          <span className="text-[10px] text-text-muted font-bold">10:42 AM</span>
-                       </div>
-                       <p className="text-sm font-bold text-text-primary">{inc.title}</p>
-                       <p className="text-[10px] text-text-muted mt-1 uppercase font-bold tracking-tight">{inc.loc}</p>
-                    </div>
-                  ))}
-               </div>
-               <button className="w-full mt-8 py-3 text-xs font-bold text-text-muted hover:text-red-500 transition-colors border border-surface-border rounded-xl">
-                  View Security Board
-               </button>
-            </div>
-         </div>
-      </div>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }

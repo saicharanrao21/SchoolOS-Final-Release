@@ -1,83 +1,80 @@
 'use client';
 
-import React from 'react';
-import { Activity, AlertTriangle, ClipboardPlus, HeartPulse, Pill, ShieldCheck } from 'lucide-react';
+import React, { useState } from 'react';
+import { PageHeader } from '../../../../components/common/PageHeader';
+import { Card } from '../../../../components/common/Card';
+import { StatusBadge } from '../../../../components/common/StatusBadge';
+import { FilterBar } from '../../../../components/common/FilterBar';
+import { HeartPulse, Activity, Pill, AlertTriangle, ClipboardPlus } from 'lucide-react';
 
-const stats = [
-  { label: 'Medical Profiles', value: '—', icon: HeartPulse, hint: 'Centralized student health records' },
-  { label: 'Visits Today', value: '—', icon: Activity, hint: 'First-aid and wellness visits' },
-  { label: 'Active Medications', value: '—', icon: Pill, hint: 'Medication schedules requiring attention' },
-  { label: 'Emergencies Today', value: '—', icon: AlertTriangle, hint: 'Escalate and notify guardians immediately' },
-];
+export default function StudentHealthDashboardPage() {
+  const [search, setSearch] = useState('');
 
-export default function StudentHealthDashboard() {
+  const mockVisits = [
+    { id: '1', student: 'Alice Johnson', reason: 'Routine First Aid (Minor Scratch)', time: '10:30 AM', medic: 'Nurse Mary', status: 'COMPLETED' },
+    { id: '2', student: 'Michael Chen', reason: 'High Fever & Headache', time: '11:15 AM', medic: 'Nurse Mary', status: 'GUARDIAN_NOTIFIED' },
+  ];
+
+  const filtered = mockVisits.filter((v) =>
+    `${v.student} ${v.reason}`.toLowerCase().includes(search.toLowerCase()),
+  );
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary">Student Health & Wellness</h1>
-          <p className="text-text-secondary text-sm">Medical profiles, first-aid visits, medications and emergency readiness</p>
-        </div>
-        <div className="flex gap-3">
-          <button className="bg-white border border-surface-border text-text-primary px-4 py-2.5 rounded-button font-bold text-sm flex items-center gap-2">
-            <ClipboardPlus className="w-4 h-4" /> Record Visit
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <PageHeader
+        title="Health Centre & Student Wellness Operations"
+        subtitle="Manage student medical profiles, clinical first-aid visits, allergy registers, and emergency readiness"
+        badge="HIPAA Compliant Vault"
+        badgeVariant="SUCCESS"
+        breadcrumbs={[
+          { label: 'SchoolOS', href: '/management/dashboard' },
+          { label: 'Health Centre' },
+        ]}
+        actions={
+          <button className="flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-4 py-2.5 rounded-xl font-bold text-xs transition-all shadow-sm active:scale-95">
+            <ClipboardPlus className="w-4 h-4" /> Record Clinical Visit
           </button>
-          <button className="bg-primary text-white px-5 py-2.5 rounded-button font-bold text-sm shadow-md flex items-center gap-2">
-            <HeartPulse className="w-4 h-4" /> Health Centre
-          </button>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => (
-          <div key={stat.label} className="bg-white p-6 rounded-card shadow-card border border-surface-border">
-            <div className="flex items-start justify-between">
-              <div className="p-3 rounded-xl bg-primary/10 text-primary"><stat.icon className="w-6 h-6" /></div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Live</span>
+      <FilterBar
+        searchQuery={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Filter student or clinical reason..."
+      />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Medical Profiles', value: '2,840 Active', icon: HeartPulse, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200' },
+          { label: 'Visits Today', value: '8 Encounters', icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
+          { label: 'Active Medication Rules', value: '14 Prescribed', icon: Pill, color: 'text-purple-600', bg: 'bg-purple-50 border-purple-200' },
+          { label: 'Emergency Alerts', value: '0 Active', icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
+        ].map((item) => (
+          <div key={item.label} className="bg-white p-5 rounded-2xl border border-surface-border shadow-xs flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-text-muted">{item.label}</p>
+              <p className="text-2xl font-bold text-text-primary mt-1">{item.value}</p>
             </div>
-            <p className="text-sm font-medium text-text-muted mt-5">{stat.label}</p>
-            <p className="text-3xl font-bold text-text-primary mt-1">{stat.value}</p>
-            <p className="text-xs text-text-secondary mt-2">{stat.hint}</p>
+            <div className={`p-3 rounded-xl border ${item.bg} ${item.color}`}>
+              <item.icon className="w-5 h-5" />
+            </div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white rounded-card shadow-card border border-surface-border p-7">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-lg font-bold text-text-primary">Clinical Operations</h2>
-              <p className="text-xs text-text-muted mt-1">Designed for the school nurse / health office workflow</p>
+      <Card title="Today Health Centre Clinical Visits">
+        <div className="divide-y divide-surface-border text-xs font-medium">
+          {filtered.map((v) => (
+            <div key={v.id} className="py-3 flex items-center justify-between">
+              <div>
+                <p className="font-bold text-text-primary text-sm">{v.student}</p>
+                <p className="text-text-muted">{v.reason} • Time: {v.time} • Attending: {v.medic}</p>
+              </div>
+              <StatusBadge status={v.status} />
             </div>
-            <ShieldCheck className="w-5 h-5 text-primary" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
-              ['Student Medical Profiles', 'Allergies, chronic conditions, doctors, insurance and treatment consent'],
-              ['Visit Register', 'Routine checks, first aid, illness, injury and emergency encounters'],
-              ['Medication Administration', 'Active medication schedules, dosage, route and completion status'],
-              ['Emergency Readiness', 'Emergency instructions, guardian notification and referral tracking'],
-            ].map(([title, description]) => (
-              <div key={title} className="rounded-xl border border-surface-border p-5 hover:border-primary/30 transition-all">
-                <h3 className="font-bold text-sm text-text-primary">{title}</h3>
-                <p className="text-xs leading-5 text-text-secondary mt-2">{description}</p>
-              </div>
-            ))}
-          </div>
+          ))}
         </div>
-
-        <div className="bg-white rounded-card shadow-card border border-surface-border p-7">
-          <h2 className="text-lg font-bold text-text-primary">Privacy Controls</h2>
-          <p className="text-xs text-text-secondary mt-2 leading-5">Health information is scoped to the authenticated organization and school and is protected by dedicated health permissions.</p>
-          <div className="mt-6 space-y-3">
-            {['Organization isolation', 'School-level access', 'Audit trail for clinical records', 'Guardian notification tracking'].map((item) => (
-              <div key={item} className="flex items-center gap-3 text-sm font-semibold text-text-primary">
-                <ShieldCheck className="w-4 h-4 text-primary" /> {item}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      </Card>
     </div>
   );
 }
