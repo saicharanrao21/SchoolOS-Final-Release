@@ -810,6 +810,7 @@ model Organization {
   cbtExams CbtExam[]
   userMemberships UserMembership[]
   authorityDelegations AuthorityDelegation[]
+  people Person[]
 }
 
 model School {
@@ -1269,12 +1270,15 @@ model Student {
   isActive        Boolean       @default(true)
   userId          String?       @unique
   user            User?         @relation(fields: [userId], references: [id])
+  personId        String?
+  person          Person?       @relation(fields: [personId], references: [id])
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
   enrollments    Enrollment[]
   guardians      GuardianStudent[]
   documents      StudentDocument[]
+  notes          StudentNote[]
   transfers      StudentTransfer[]
   withdrawals    StudentWithdrawal[]
   applications   AdmissionApplication[]
@@ -1327,6 +1331,8 @@ model Guardian {
   students    GuardianStudent[]
   userId      String?  @unique
   user        User?    @relation(fields: [userId], references: [id])
+  personId    String?
+  person      Person?  @relation(fields: [personId], references: [id])
   ptmSlots    PtmSlot[]
 }
 
@@ -2796,6 +2802,7 @@ model User {
   memberships UserMembership[]
   delegatedAuthoritiesGiven AuthorityDelegation[] @relation("DelegatorUser")
   delegatedAuthoritiesReceived AuthorityDelegation[] @relation("DelegateeUser")
+  writtenStudentNotes StudentNote[]
 }
 
 model Role {
@@ -6088,6 +6095,80 @@ model ConfigurationAudit {
 
   @@index([organizationId, schoolId, category])
 }
+
+// ==========================================
+// Phase 1.0: Canonical Person 360 & Student Domain Models
+// ==========================================
+model Person {
+  id              String        @id @default(uuid())
+  firstName       String
+  middleName      String?
+  lastName        String
+  displayName     String?
+  dateOfBirth     DateTime?
+  gender          String?
+  nationality     String?
+  primaryLanguage String?
+  profilePhoto    String?
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  students        Student[]
+  guardians       Guardian[]
+  contacts        ContactMethod[]
+  addresses       Address[]
+
+  @@index([organizationId, lastName, firstName])
+}
+
+model ContactMethod {
+  id          String   @id @default(uuid())
+  personId    String
+  person      Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  type        String   // MOBILE, EMAIL, WHATSAPP, EMERGENCY
+  value       String
+  isPrimary   Boolean  @default(false)
+  isVerified  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([personId, type])
+}
+
+model Address {
+  id          String   @id @default(uuid())
+  personId    String
+  person      Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  type        String   // HOME, WORK, HOSTEL, OTHER
+  line1       String
+  line2       String?
+  city        String
+  state       String
+  country     String   @default("US")
+  postalCode  String
+  isPrimary   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([personId])
+}
+
+model StudentNote {
+  id          String   @id @default(uuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  category    String   @default("GENERAL") // GENERAL, ACADEMIC, DISCIPLINE, COUNSELING, HEALTH, ADMINISTRATIVE
+  content     String
+  isPrivate   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([studentId, category])
+}
+
 
 
 

@@ -1,6 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
+import { PageHeader } from '../../../../components/common/PageHeader';
+import { Card } from '../../../../components/common/Card';
+import { StatusBadge } from '../../../../components/common/StatusBadge';
 import {
   ArrowLeft,
   User,
@@ -12,162 +15,217 @@ import {
   Phone,
   Mail,
   Edit2,
-  MoreVertical,
-  Printer
+  CheckCircle2,
+  Wallet,
+  Calendar,
+  Plus,
 } from 'lucide-react';
 import Link from 'next/link';
 
-export default function StudentProfilePage({ params }: { params: { id: string } }) {
-  const [activeTab, setActiveTab] = useState('overview');
+export default function Student360ProfilePage({ params }: { params: { id: string } }) {
+  const [activeTab, setActiveTab] = useState<'overview' | 'academic' | 'guardians' | 'documents' | 'notes'>('overview');
 
-  const tabs = [
-    { id: 'overview', label: 'Overview', icon: User },
-    { id: 'academic', label: 'Academic', icon: BookOpen },
-    { id: 'guardians', label: 'Guardians', icon: Shield },
-    { id: 'documents', label: 'Documents', icon: FileText },
-    { id: 'history', label: 'History', icon: History },
-  ];
+  const mockStudent = {
+    id: params.id,
+    admissionNumber: 'ADM-2026-0001',
+    firstName: 'Alice',
+    lastName: 'Johnson',
+    displayName: 'Alice Johnson',
+    dateOfBirth: '2010-05-14',
+    gender: 'Female',
+    nationality: 'American',
+    status: 'ACTIVE',
+    schoolName: 'SchoolOS Main Campus',
+    campusName: 'Main Campus',
+    className: 'Grade 10',
+    sectionName: 'A',
+    rollNumber: '10-A-01',
+    houseName: 'Red Dragons',
+    guardians: [
+      { name: 'Robert Johnson', relationship: 'FATHER', isPrimary: true, phone: '+1 415 987 6543', email: 'robert.j@schoolos.test' },
+      { name: 'Martha Johnson', relationship: 'MOTHER', isPrimary: false, phone: '+1 415 987 6544', email: 'martha.j@schoolos.test' },
+    ],
+    enrollmentHistory: [
+      { academicYear: '2026-2027', school: 'SchoolOS Main Campus', class: 'Grade 10', section: 'A', status: 'ACTIVE' },
+      { academicYear: '2025-2026', school: 'SchoolOS Main Campus', class: 'Grade 9', section: 'B', status: 'COMPLETED' },
+    ],
+    documents: [
+      { name: 'Birth Certificate', type: 'BIRTH_CERTIFICATE', status: 'VERIFIED' },
+      { name: 'Previous Grade Transcript', type: 'ACADEMIC_RECORD', status: 'VERIFIED' },
+    ],
+    notes: [
+      { category: 'ACADEMIC', content: 'Excelled in District Science Olympiad competition.', author: 'Dr. Sarah Connor', date: '2026-09-01' },
+    ],
+    attendanceRate: 98,
+    feeBalance: 0,
+  };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/management/students" className="p-2 hover:bg-white rounded-lg transition-colors">
-            <ArrowLeft className="w-5 h-5 text-text-muted" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-text-primary">Alice Johnson</h1>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs font-bold text-text-muted uppercase tracking-widest">GA260001</span>
-              <span className="w-1 h-1 rounded-full bg-text-muted/30"></span>
-              <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full uppercase">Active Student</span>
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <button className="flex items-center gap-2 px-4 py-2 border border-surface-border rounded-lg text-sm font-bold text-text-secondary hover:bg-white transition-all shadow-sm">
-            <Printer className="w-4 h-4" />
-            <span>ID Card</span>
-          </button>
-          <button className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-5 py-2.5 rounded-button font-bold transition-all shadow-md active:scale-95">
-            <Edit2 className="w-4 h-4" />
-            <span>Edit Profile</span>
-          </button>
-          <button className="p-2.5 border border-surface-border rounded-lg hover:bg-white text-text-muted transition-all">
-            <MoreVertical className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <PageHeader
+        title={`${mockStudent.displayName} (${mockStudent.admissionNumber})`}
+        subtitle={`${mockStudent.className} • Section ${mockStudent.sectionName} • ${mockStudent.schoolName}`}
+        badge={mockStudent.status}
+        badgeVariant="SUCCESS"
+        breadcrumbs={[
+          { label: 'SchoolOS', href: '/management/dashboard' },
+          { label: 'Students', href: '/management/students' },
+          { label: mockStudent.displayName },
+        ]}
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-1 space-y-8">
-          <div className="bg-white rounded-card shadow-card border border-surface-border p-8 flex flex-col items-center text-center">
-            <div className="w-32 h-32 rounded-3xl bg-primary-light flex items-center justify-center text-primary text-4xl font-bold mb-6 border-4 border-white shadow-xl shadow-primary/10">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column: Quick Profile Card */}
+        <div className="space-y-6">
+          <Card className="text-center p-6">
+            <div className="w-24 h-24 rounded-3xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center font-bold text-2xl mx-auto mb-4">
               AJ
             </div>
-            <h2 className="text-xl font-bold text-text-primary">Alice Johnson</h2>
-            <p className="text-sm text-text-muted font-medium mb-6">Grade 10 • Section A</p>
+            <h2 className="font-bold text-text-primary text-lg">{mockStudent.displayName}</h2>
+            <p className="text-xs font-semibold text-text-muted mt-0.5">
+              {mockStudent.className} • Section {mockStudent.sectionName} (Roll: {mockStudent.rollNumber})
+            </p>
 
-            <div className="w-full space-y-4 pt-6 border-t border-surface-border">
-              <div className="flex items-center gap-3 text-sm">
-                <Phone className="w-4 h-4 text-primary" />
-                <span className="text-text-secondary">+44 7700 900077</span>
+            <div className="grid grid-cols-2 gap-3 mt-6 pt-4 border-t border-surface-border text-center">
+              <div className="p-3 bg-green-50 rounded-xl border border-green-200">
+                <p className="text-[10px] font-bold text-green-700 uppercase">Attendance</p>
+                <p className="text-lg font-bold text-green-800">{mockStudent.attendanceRate}%</p>
               </div>
-              <div className="flex items-center gap-3 text-sm">
-                <Mail className="w-4 h-4 text-primary" />
-                <span className="text-text-secondary">alice.j@global.com</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm">
-                <MapPin className="w-4 h-4 text-primary" />
-                <span className="text-text-secondary text-left">24 Abbey Road, London, NW8 9AY</span>
+              <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
+                <p className="text-[10px] font-bold text-blue-700 uppercase">Fee Balance</p>
+                <p className="text-lg font-bold text-blue-900">${mockStudent.feeBalance}</p>
               </div>
             </div>
-          </div>
+          </Card>
 
-          <div className="bg-sidebar-background rounded-card p-6 text-white shadow-xl shadow-sidebar-background/20 overflow-hidden relative group">
-            <div className="absolute top-0 right-0 p-4 opacity-10 transform translate-x-4 -translate-y-4 group-hover:translate-x-0 group-hover:translate-y-0 transition-transform duration-500">
-              <Shield className="w-32 h-32" />
+          {/* Primary Guardian Summary */}
+          <Card title="Primary Guardian" subtitle="Direct contact & portal access authorization">
+            <div className="space-y-3 text-xs font-medium text-text-secondary">
+              <p className="font-bold text-text-primary text-sm">{mockStudent.guardians[0].name}</p>
+              <p className="flex items-center gap-2">
+                <Shield className="w-3.5 h-3.5 text-primary" /> Relationship: {mockStudent.guardians[0].relationship}
+              </p>
+              <p className="flex items-center gap-2">
+                <Phone className="w-3.5 h-3.5 text-text-muted" /> {mockStudent.guardians[0].phone}
+              </p>
+              <p className="flex items-center gap-2">
+                <Mail className="w-3.5 h-3.5 text-text-muted" /> {mockStudent.guardians[0].email}
+              </p>
             </div>
-            <h3 className="font-bold text-sm uppercase tracking-widest opacity-60 mb-4">Primary Guardian</h3>
-            <p className="text-lg font-bold">Robert Johnson</p>
-            <p className="text-sm opacity-80 mt-1">Father • Software Engineer</p>
-            <button className="mt-6 w-full py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold transition-all backdrop-blur-sm">View Contact</button>
-          </div>
+          </Card>
         </div>
 
-        <div className="lg:col-span-2 space-y-8">
-          <div className="bg-white rounded-card shadow-card border border-surface-border overflow-hidden">
-            <div className="flex border-b border-surface-border bg-surface-background/30 p-1">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-xs font-bold transition-all ${
-                    activeTab === tab.id
-                      ? 'bg-white shadow-sm text-primary'
-                      : 'text-text-muted hover:bg-white/50'
-                  }`}
-                >
-                  <tab.icon className="w-4 h-4" />
-                  <span>{tab.label}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="p-8">
-              {activeTab === 'overview' && (
-                <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                  <div className="grid grid-cols-2 gap-8">
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Admission Date</p>
-                      <p className="text-sm font-bold text-text-primary">August 15, 2026</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Current Session</p>
-                      <p className="text-sm font-bold text-text-primary">2026-27</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Roll Number</p>
-                      <p className="text-sm font-bold text-text-primary">10-A-01</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">House</p>
-                      <p className="text-sm font-bold text-red-600">Red House</p>
-                    </div>
-                  </div>
-
-                  <div className="p-6 bg-surface-background rounded-2xl border border-surface-border">
-                    <h4 className="font-bold text-text-primary mb-4 flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-primary" />
-                      Emergency Information
-                    </h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-xs text-text-muted">Blood Group</p>
-                        <p className="font-bold text-text-primary">O Positive (O+)</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-text-muted">Allergies</p>
-                        <p className="font-bold text-yellow-600 italic">None Reported</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab !== 'overview' && (
-                <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 opacity-40">
-                   <div className="w-16 h-16 bg-surface-background rounded-full flex items-center justify-center">
-                     <History className="w-8 h-8 text-text-muted" />
-                   </div>
-                   <div>
-                     <p className="font-bold text-text-primary uppercase tracking-widest text-xs">Module Implementation Required</p>
-                     <p className="text-xs text-text-muted mt-1">This section will be populated in subsequent phases.</p>
-                   </div>
-                </div>
-              )}
-            </div>
+        {/* Right Column: Student 360 Tabbed Workspace */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="flex border-b border-surface-border bg-white rounded-2xl p-1.5 shadow-sm text-xs font-bold gap-2">
+            {[
+              { id: 'overview', label: 'Overview', icon: User },
+              { id: 'academic', label: 'Academic & History', icon: BookOpen },
+              { id: 'guardians', label: 'Guardians', icon: Shield },
+              { id: 'documents', label: 'Documents', icon: FileText },
+              { id: 'notes', label: 'Notes & Activity', icon: History },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all ${
+                  activeTab === tab.id ? 'bg-primary text-white shadow-xs' : 'text-text-muted hover:text-text-primary'
+                }`}
+              >
+                <tab.icon className="w-3.5 h-3.5" /> {tab.label}
+              </button>
+            ))}
           </div>
+
+          {activeTab === 'overview' && (
+            <Card title="Personal & Demographic Information">
+              <div className="grid grid-cols-2 gap-4 text-xs font-medium text-text-secondary">
+                <div>
+                  <p className="text-[10px] font-bold uppercase text-text-muted">Date of Birth</p>
+                  <p className="font-bold text-text-primary mt-0.5">{mockStudent.dateOfBirth}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase text-text-muted">Gender</p>
+                  <p className="font-bold text-text-primary mt-0.5">{mockStudent.gender}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase text-text-muted">Nationality</p>
+                  <p className="font-bold text-text-primary mt-0.5">{mockStudent.nationality}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase text-text-muted">House Group</p>
+                  <p className="font-bold text-primary mt-0.5">{mockStudent.houseName}</p>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {activeTab === 'academic' && (
+            <Card title="Academic Enrollment History" subtitle="Traceable class placement history across sessions">
+              <div className="divide-y divide-surface-border">
+                {mockStudent.enrollmentHistory.map((h, idx) => (
+                  <div key={idx} className="py-3 flex items-center justify-between text-xs">
+                    <div>
+                      <p className="font-bold text-text-primary">{h.academicYear} • {h.class} - {h.section}</p>
+                      <p className="text-text-muted">{h.school}</p>
+                    </div>
+                    <StatusBadge status={h.status} />
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {activeTab === 'guardians' && (
+            <Card title="Linked Family & Guardian Relationships">
+              <div className="divide-y divide-surface-border">
+                {mockStudent.guardians.map((g, idx) => (
+                  <div key={idx} className="py-3 flex items-center justify-between text-xs">
+                    <div>
+                      <p className="font-bold text-text-primary">{g.name} ({g.relationship})</p>
+                      <p className="text-text-muted">{g.phone} • {g.email}</p>
+                    </div>
+                    {g.isPrimary && <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 font-bold text-[10px] rounded-full border border-blue-200">PRIMARY</span>}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {activeTab === 'documents' && (
+            <Card title="Student Document Archive">
+              <div className="divide-y divide-surface-border">
+                {mockStudent.documents.map((d, idx) => (
+                  <div key={idx} className="py-3 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-primary" />
+                      <div>
+                        <p className="font-bold text-text-primary">{d.name}</p>
+                        <p className="text-[10px] text-text-muted uppercase">{d.type}</p>
+                      </div>
+                    </div>
+                    <StatusBadge status={d.status} />
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {activeTab === 'notes' && (
+            <Card title="Student Activity & Categorized Notes">
+              <div className="space-y-3">
+                {mockStudent.notes.map((n, idx) => (
+                  <div key={idx} className="p-3 bg-surface-background rounded-xl border border-surface-border text-xs space-y-1">
+                    <div className="flex justify-between items-center text-[10px] font-bold uppercase text-text-muted">
+                      <span>{n.category} • {n.author}</span>
+                      <span>{n.date}</span>
+                    </div>
+                    <p className="text-text-primary font-medium">{n.content}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
         </div>
       </div>
     </div>

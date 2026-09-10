@@ -11,8 +11,11 @@ import { EnrollmentsService } from './enrollments.service';
 import { StudentHistoryService } from './student-history.service';
 import { StudentDocumentsService } from './student-documents.service';
 import { StudentLifecycleService } from './student-lifecycle.service';
+import { ConfigModule as ConfigControlPlaneModule } from '../config/config.module';
+import { AuthModule } from '../../auth/auth.module';
 
 @Module({
+  imports: [ConfigControlPlaneModule, AuthModule],
   controllers: [
     StudentsController,
     StudentPortalController,
