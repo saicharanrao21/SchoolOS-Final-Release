@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
@@ -48,6 +48,7 @@ import { BiometricModule } from './modules/biometric/biometric.module';
 import { AiAssistantModule } from './modules/ai/ai.module';
 import { CmsModule } from './modules/cms/cms.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { CorrelationMiddleware } from './common/middleware/correlation.middleware';
 
 @Module({
   imports: [
@@ -104,4 +105,8 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     CmsModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(CorrelationMiddleware).forRoutes('*');
+  }
+}

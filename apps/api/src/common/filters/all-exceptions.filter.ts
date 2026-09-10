@@ -1,4 +1,4 @@
-import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger, Injectable } from '@nestjs/common';
 import { Request, Response } from 'express';
 
 @Injectable()
@@ -48,5 +48,3 @@ export class AllExceptionsFilter implements ExceptionFilter {
     });
   }
 }
-
-import { Injectable } from '@nestjs/common';

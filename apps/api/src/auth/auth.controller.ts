@@ -1,13 +1,17 @@
-import { Controller, Post, Body, Req, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Body, Req, UnauthorizedException, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Request } from 'express';
+import { LoginDto } from './dto/login.dto';
+import { RefreshDto } from './dto/refresh.dto';
+import { LogoutDto } from './dto/logout.dto';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  async login(@Body() body: any, @Req() req: Request) {
+  @HttpCode(HttpStatus.OK)
+  async login(@Body() body: LoginDto, @Req() req: Request) {
     const user = await this.authService.validateUser(body.email, body.password);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
@@ -18,13 +22,15 @@ export class AuthController {
   }
 
   @Post('refresh')
-  async refresh(@Body('refresh_token') refreshToken: string) {
-    return this.authService.refresh(refreshToken);
+  @HttpCode(HttpStatus.OK)
+  async refresh(@Body() dto: RefreshDto) {
+    return this.authService.refresh(dto.refreshToken);
   }
 
   @Post('logout')
-  async logout(@Body('refresh_token') refreshToken: string) {
-    await this.authService.logout(refreshToken);
+  @HttpCode(HttpStatus.OK)
+  async logout(@Body() dto: LogoutDto) {
+    await this.authService.logout(dto.refreshToken);
     return { success: true };
   }
 }

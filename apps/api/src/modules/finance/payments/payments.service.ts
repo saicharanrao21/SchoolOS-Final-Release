@@ -25,19 +25,38 @@ export class PaymentsService {
     });
     if (!demand) throw new NotFoundException('Fee demand not found');
 
+    // --- Idempotency Check ---
+    if (data.transactionRef || data.providerRef) {
+      const conditions: Prisma.PaymentWhereInput[] = [];
+      if (data.transactionRef) conditions.push({ transactionRef: data.transactionRef });
+      if (data.providerRef) conditions.push({ providerRef: data.providerRef });
+
+      const existingPayment = await this.db.payment.findFirst({
+        where: {
+          studentId: student.id,
+          feeDemandId: demand.id,
+          OR: conditions,
+        },
+        include: { receipt: true, feeDemand: true },
+      });
+
+      if (existingPayment) {
+        return existingPayment;
+      }
+    }
+
     const amount = new Prisma.Decimal(data.amount);
     if (amount.gt(demand.balanceAmount)) {
       throw new BadRequestException('Payment amount exceeds invoice balance');
     }
 
     return this.db.$transaction(async (tx) => {
-      // ... (previous logic)
       const payment = await tx.payment.create({
         data: {
           studentId: student.id,
           feeDemandId: demand.id,
           amount,
-          method: data.method,
+          method: data.method || PaymentMethod.CASH,
           transactionRef: data.transactionRef,
           providerRef: data.providerRef,
           receivedById: actorId,
@@ -46,7 +65,6 @@ export class PaymentsService {
         },
       });
 
-      // ... (receipt, demand, account, ledger logic)
       const receiptNumber = await this.generateReceiptNumber(tx, student.schoolId);
       await tx.receipt.create({
         data: {
@@ -71,11 +89,17 @@ export class PaymentsService {
         },
       });
 
-      await tx.studentFeeAccount.update({
+      await tx.studentFeeAccount.upsert({
         where: { studentId: student.id },
-        data: {
+        update: {
           totalPaid: { increment: amount },
           balance: { decrement: amount },
+        },
+        create: {
+          studentId: student.id,
+          totalBilled: demand.totalAmount,
+          totalPaid: amount,
+          balance: demand.balanceAmount.sub(amount),
         },
       });
 
@@ -101,7 +125,6 @@ export class PaymentsService {
         metadata: { amount: amount.toNumber(), method: data.method },
       });
 
-      // Emit notification event
       this.eventEmitter.emit('payment.received', {
         organizationId,
         schoolId: student.schoolId,
@@ -110,13 +133,13 @@ export class PaymentsService {
         receiptNumber,
       });
 
-      // Integrate with Accounting
       this.accounting.handlePaymentReceived(organizationId, payment.id, actorId);
 
       return payment;
     });
   }
-private async generateReceiptNumber(tx: any, schoolId: string): Promise<string> {
+
+  private async generateReceiptNumber(tx: any, schoolId: string): Promise<string> {
     const year = new Date().getFullYear().toString();
     const count = await tx.receipt.count({
       where: { payment: { student: { schoolId } } },
