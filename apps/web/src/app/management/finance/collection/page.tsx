@@ -1,80 +1,127 @@
 'use client';
 
 import { useState } from 'react';
+import { PageHeader } from '../../../../components/common/PageHeader';
+import { Card } from '../../../../components/common/Card';
+import { StatusBadge } from '../../../../components/common/StatusBadge';
 import { BellRing, Clock3, Percent, RefreshCcw, ShieldCheck, WalletCards } from 'lucide-react';
 
 const buckets = [
-  ['Current', '₹0', 'Not yet overdue'],
-  ['1–30 days', '₹0', 'Early follow-up'],
-  ['31–60 days', '₹0', 'Priority collection'],
-  ['61–90 days', '₹0', 'Escalation'],
-  ['90+ days', '₹0', 'Critical ageing'],
+  { label: 'Current', amount: '$45,200', hint: 'Not yet overdue' },
+  { label: '1–30 days', amount: '$12,800', hint: 'Early follow-up' },
+  { label: '31–60 days', amount: '$8,400', hint: 'Priority collection' },
+  { label: '61–90 days', amount: '$3,200', hint: 'Escalation' },
+  { label: '90+ days', amount: '$1,100', hint: 'Critical ageing' },
 ];
 
-export default function FeeCollectionControl() {
+export default function FeeCollectionControlPage() {
   const [channel, setChannel] = useState('WHATSAPP');
-  return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Finance Operations</p>
-        <h1 className="text-3xl font-bold text-text-primary mt-2">Fee Collection Control</h1>
-        <p className="text-text-secondary mt-2 max-w-3xl">Manage overdue policies, ageing, and automated payment reminders from one school-scoped control surface.</p>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+  return (
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <PageHeader
+        title="Fee Collection Control & Receivables Ledger"
+        subtitle="Manage overdue fee late policies, receivables ageing buckets, and automated payment reminder queues"
+        badge="Idempotent Payment Engine"
+        badgeVariant="SUCCESS"
+        breadcrumbs={[
+          { label: 'SchoolOS', href: '/management/dashboard' },
+          { label: 'Fees & Finance' },
+          { label: 'Collection Control' },
+        ]}
+      />
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          [Clock3, 'Overdue Engine', 'Apply late fees using the school policy'],
-          [BellRing, 'Reminder Queue', 'Queue SMS, WhatsApp, email or push'],
-          [WalletCards, 'Collection Ageing', 'See outstanding balances by ageing'],
-        ].map(([Icon, title, text]) => (
-          <div key={String(title)} className="bg-white rounded-card border border-surface-border shadow-card p-6">
-            <Icon className="w-6 h-6 text-primary mb-4" />
-            <h3 className="font-bold text-text-primary">{String(title)}</h3>
-            <p className="text-sm text-text-secondary mt-1">{String(text)}</p>
-          </div>
+          { icon: Clock3, title: 'Late Fee Overdue Engine', desc: 'Apply late fees using school policy rules' },
+          { icon: BellRing, title: 'Multi-Channel Reminders', desc: 'Queue SMS, WhatsApp, email, or push' },
+          { icon: WalletCards, title: 'Receivables Ageing', desc: 'Monitor outstanding balances by ageing' },
+        ].map((item) => (
+          <Card key={item.title}>
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-primary/10 rounded-xl border border-primary/20 text-primary shrink-0">
+                <item.icon className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-xs text-text-primary">{item.title}</h3>
+                <p className="text-[11px] text-text-secondary mt-0.5">{item.desc}</p>
+              </div>
+            </div>
+          </Card>
         ))}
       </div>
 
-      <div className="bg-white rounded-card border border-surface-border shadow-card p-6">
-        <div className="flex items-center justify-between gap-4 mb-5">
-          <div>
-            <h2 className="text-lg font-bold text-text-primary">Receivables Ageing</h2>
-            <p className="text-sm text-text-secondary">Live school-scoped outstanding balance buckets.</p>
-          </div>
-          <button className="inline-flex items-center gap-2 border border-surface-border rounded-button px-4 py-2 text-sm font-bold">
-            <RefreshCcw className="w-4 h-4" /> Refresh
+      <Card
+        title="Receivables Ageing Buckets"
+        action={
+          <button className="flex items-center gap-1.5 px-3 py-1.5 border border-surface-border bg-white rounded-lg text-xs font-bold text-text-primary hover:bg-surface-hover shadow-2xs">
+            <RefreshCcw className="w-3.5 h-3.5" /> Refresh Ageing
           </button>
-        </div>
+        }
+      >
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          {buckets.map(([label, amount, hint]) => (
-            <div key={label} className="rounded-2xl border border-surface-border p-4 bg-surface-background">
-              <p className="text-xs font-bold text-text-muted uppercase">{label}</p>
-              <p className="text-2xl font-bold text-text-primary mt-2">{amount}</p>
-              <p className="text-xs text-text-secondary mt-1">{hint}</p>
+          {buckets.map((b) => (
+            <div key={b.label} className="rounded-xl border border-surface-border p-4 bg-surface-background text-center">
+              <p className="text-[10px] font-bold text-text-muted uppercase">{b.label}</p>
+              <p className="text-xl font-bold text-text-primary mt-1">{b.amount}</p>
+              <p className="text-[10px] text-text-secondary mt-0.5">{b.hint}</p>
             </div>
           ))}
         </div>
-      </div>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-card border border-surface-border shadow-card p-6">
-          <div className="flex items-center gap-3 mb-5"><Percent className="w-5 h-5 text-primary" /><h2 className="text-lg font-bold">Late Fee Policy</h2></div>
-          <div className="grid grid-cols-2 gap-4">
-            <label className="text-sm font-semibold">Policy name<input className="mt-2 w-full border rounded-lg px-3 py-2" placeholder="Monthly late fee" /></label>
-            <label className="text-sm font-semibold">Type<select className="mt-2 w-full border rounded-lg px-3 py-2"><option>PERCENTAGE</option><option>FIXED</option><option>DAILY_FIXED</option></select></label>
-            <label className="text-sm font-semibold">Value<input type="number" className="mt-2 w-full border rounded-lg px-3 py-2" placeholder="2" /></label>
-            <label className="text-sm font-semibold">Grace days<input type="number" className="mt-2 w-full border rounded-lg px-3 py-2" placeholder="5" /></label>
+        <Card title="Late Fee Policy Configuration">
+          <div className="grid grid-cols-2 gap-3 text-xs font-semibold">
+            <label className="space-y-1">
+              <span>Policy Name</span>
+              <input className="w-full border border-surface-border rounded-xl px-3 py-2 bg-white" defaultValue="Standard Late Fee" />
+            </label>
+            <label className="space-y-1">
+              <span>Policy Type</span>
+              <select className="w-full border border-surface-border rounded-xl px-3 py-2 bg-white">
+                <option value="PERCENTAGE">PERCENTAGE</option>
+                <option value="FIXED">FIXED</option>
+                <option value="DAILY_FIXED">DAILY_FIXED</option>
+              </select>
+            </label>
+            <label className="space-y-1">
+              <span>Value</span>
+              <input type="number" className="w-full border border-surface-border rounded-xl px-3 py-2 bg-white" defaultValue={2} />
+            </label>
+            <label className="space-y-1">
+              <span>Grace Days</span>
+              <input type="number" className="w-full border border-surface-border rounded-xl px-3 py-2 bg-white" defaultValue={5} />
+            </label>
           </div>
-          <button className="mt-5 bg-primary text-white rounded-button px-5 py-2.5 font-bold text-sm">Save Policy</button>
-        </div>
+          <button className="mt-4 bg-primary hover:bg-primary-hover text-white rounded-xl px-4 py-2 font-bold text-xs shadow-sm">
+            Save Late Fee Policy
+          </button>
+        </Card>
 
-        <div className="bg-white rounded-card border border-surface-border shadow-card p-6">
-          <div className="flex items-center gap-3 mb-5"><BellRing className="w-5 h-5 text-primary" /><h2 className="text-lg font-bold">Queue Fee Reminders</h2></div>
-          <label className="text-sm font-semibold block">Channel<select value={channel} onChange={e => setChannel(e.target.value)} className="mt-2 w-full border rounded-lg px-3 py-2"><option>WHATSAPP</option><option>SMS</option><option>EMAIL</option><option>PUSH</option></select></label>
-          <label className="text-sm font-semibold block mt-4">Due within days<input type="number" defaultValue={3} min={0} max={30} className="mt-2 w-full border rounded-lg px-3 py-2" /></label>
-          <div className="flex items-center gap-2 mt-5 text-xs text-text-secondary"><ShieldCheck className="w-4 h-4" /> Recipients are resolved from the student's authorized guardian records.</div>
-          <button className="mt-5 bg-primary text-white rounded-button px-5 py-2.5 font-bold text-sm">Queue {channel} Reminders</button>
-        </div>
+        <Card title="Queue Payment Reminders">
+          <div className="space-y-3 text-xs font-semibold">
+            <label className="space-y-1 block">
+              <span>Channel</span>
+              <select value={channel} onChange={(e) => setChannel(e.target.value)} className="w-full border border-surface-border rounded-xl px-3 py-2 bg-white">
+                <option value="WHATSAPP">WHATSAPP</option>
+                <option value="SMS">SMS</option>
+                <option value="EMAIL">EMAIL</option>
+                <option value="PUSH">PUSH</option>
+              </select>
+            </label>
+            <label className="space-y-1 block">
+              <span>Due within days</span>
+              <input type="number" defaultValue={3} min={0} max={30} className="w-full border border-surface-border rounded-xl px-3 py-2 bg-white" />
+            </label>
+            <p className="flex items-center gap-1.5 text-[11px] text-text-muted pt-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-primary" /> Recipients resolved from authorized parent guardian records.
+            </p>
+          </div>
+          <button className="mt-4 bg-primary hover:bg-primary-hover text-white rounded-xl px-4 py-2 font-bold text-xs shadow-sm">
+            Queue {channel} Reminders
+          </button>
+        </Card>
       </div>
     </div>
   );
