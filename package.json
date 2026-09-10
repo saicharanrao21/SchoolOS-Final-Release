@@ -1,0 +1,26 @@
+{
+  "name": "schoolos",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SchoolOS Enterprise Monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "api:dev": "npm run dev --workspace=@schoolos/api",
+    "mobile:dev": "cd apps/mobile && flutter run",
+    "web:dev": "npm run dev --workspace=@schoolos/web",
+    "worker:dev": "npm run dev --workspace=@schoolos/worker",
+    "lint": "npm run lint --workspaces",
+    "test": "npm run test --workspaces",
+    "build": "npm run build --workspaces",
+    "prisma:generate": "npm run prisma:generate --workspace=@schoolos/api",
+    "prisma:migrate": "npm run prisma:migrate --workspace=@schoolos/api"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0"
+  }
+}

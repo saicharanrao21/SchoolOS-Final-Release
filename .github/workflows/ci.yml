@@ -1,0 +1,100 @@
+name: SchoolOS Continuous Integration (CI)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  api-build-and-test:
+    name: NestJS API Build & Jest Test Suite
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: schoolos_user
+          POSTGRES_PASSWORD: schoolos_password
+          POSTGRES_DB: schoolos_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Monorepo Dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate --schema=apps/api/prisma/schema.prisma
+
+      - name: Build NestJS API
+        run: npm run build --workspace=@schoolos/api
+
+      - name: Run API Jest Test Suite (Unit, Security, E2E, Load)
+        run: npm test --workspace=@schoolos/api
+        env:
+          DATABASE_URL: "postgresql://schoolos_user:schoolos_password@localhost:5432/schoolos_db?schema=public"
+          JWT_SECRET: "ci-test-jwt-secret-key"
+
+  web-build:
+    name: Next.js Web Management Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Monorepo Dependencies
+        run: npm ci
+
+      - name: Build Next.js Web
+        run: npm run build --workspace=@schoolos/web
+
+  mobile-analyze-and-test:
+    name: Flutter Mobile Analyze & Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java JDK (v17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install Mobile Dependencies
+        run: cd apps/mobile && flutter pub get
+
+      - name: Run Flutter Static Analysis
+        run: cd apps/mobile && flutter analyze
+
+      - name: Run Flutter Unit Tests
+        run: cd apps/mobile && flutter test
