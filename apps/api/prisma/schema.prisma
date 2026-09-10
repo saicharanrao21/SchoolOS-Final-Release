@@ -1559,6 +1559,8 @@ model AdmissionOffer {
   offeredDate       DateTime             @default(now())
   expiryDate        DateTime?
   conditions        String?
+  feePaid           Boolean              @default(false)
+  paymentRef        String?
   status            String               @default("PENDING") // PENDING, ACCEPTED, DECLINED, EXPIRED
   acceptedDate      DateTime?
 }
