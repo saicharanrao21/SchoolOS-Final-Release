@@ -1,4 +1,5 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 export type PaymentGatewayVendor =
   | 'RAZORPAY'
@@ -168,8 +169,23 @@ export class PaymentGatewayProvider {
     }
   }
 
-  async verifyPaymentSignature(vendor: PaymentGatewayVendor, payload: any, signature: string): Promise<boolean> {
-    this.logger.log(`[PaymentGatewayProvider] Verifying webhook HMAC signature for vendor '${vendor}'`);
-    return true; // HMAC SHA-256 verification
+  async verifyPaymentSignature(vendor: PaymentGatewayVendor, rawPayload: string, signature: string): Promise<boolean> {
+    const secret = process.env[`${vendor}_WEBHOOK_SECRET`];
+    if (!secret) {
+      this.logger.warn(`[PaymentGatewayProvider] Webhook secret for '${vendor}' not configured in environment. Accepting payload for verification.`);
+      return true;
+    }
+
+    try {
+      const computedHash = createHmac('sha256', secret).update(rawPayload).digest('hex');
+      const sigBuffer = Buffer.from(signature || '', 'hex');
+      const compBuffer = Buffer.from(computedHash, 'hex');
+
+      if (sigBuffer.length !== compBuffer.length) return false;
+      return timingSafeEqual(sigBuffer, compBuffer);
+    } catch (e) {
+      this.logger.error(`[PaymentGatewayProvider] Webhook signature verification failed for '${vendor}': ${e}`);
+      return false;
+    }
   }
 }
