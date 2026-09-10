@@ -983,6 +983,8 @@ model AcademicYear {
   classes        Class[]
   calendarEvents CalendarEvent[]
   enrollments    Enrollment[]
+  promotionsFrom StudentPromotion[] @relation("PromotionFromYear")
+  promotionsTo   StudentPromotion[] @relation("PromotionToYear")
   applications   AdmissionApplication[]
   feeStructures  FeeStructure[]
   feeDemands     FeeDemand[]
@@ -1281,6 +1283,7 @@ model Student {
   notes          StudentNote[]
   transfers      StudentTransfer[]
   withdrawals    StudentWithdrawal[]
+  promotions     StudentPromotion[]
   applications   AdmissionApplication[]
   feeAccount     StudentFeeAccount?
   feeAssignments FeeAssignment[]
@@ -6170,6 +6173,27 @@ model StudentNote {
 
   @@index([studentId, category])
 }
+
+model StudentPromotion {
+  id                 String       @id @default(uuid())
+  studentId          String
+  student            Student      @relation(fields: [studentId], references: [id])
+  fromAcademicYearId String
+  fromAcademicYear   AcademicYear @relation("PromotionFromYear", fields: [fromAcademicYearId], references: [id])
+  toAcademicYearId   String
+  toAcademicYear     AcademicYear @relation("PromotionToYear", fields: [toAcademicYearId], references: [id])
+  fromClassId        String
+  fromSectionId      String
+  toClassId          String
+  toSectionId        String
+  promotionType      String       @default("PROMOTED") // PROMOTED, RETAINED, DEMOTED
+  authorizedById     String
+  remarks            String?
+  createdAt          DateTime     @default(now())
+
+  @@index([studentId, fromAcademicYearId])
+}
+
 
 
 

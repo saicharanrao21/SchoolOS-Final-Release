@@ -16,6 +16,9 @@ import { AssignmentsService } from './assignments/assignments.service';
 import { AssignmentsController } from './assignments/assignments.controller';
 import { TimetableOperationsService } from './timetable-operations/timetable-operations.service';
 import { TimetableOperationsController } from './timetable-operations/timetable-operations.controller';
+import { AcademicsOperationsService } from './academic-operations.service';
+import { AcademicOperationsController } from './academic-operations.controller';
+import { AuthModule } from '../../auth/auth.module';
 
 @Module({
   imports: [
@@ -24,6 +27,7 @@ import { TimetableOperationsController } from './timetable-operations/timetable-
     ClassesModule,
     SectionsModule,
     SubjectsModule,
+    AuthModule,
   ],
   controllers: [
     TeacherAssignmentsController,
@@ -32,6 +36,7 @@ import { TimetableOperationsController } from './timetable-operations/timetable-
     SubstitutionsController,
     AssignmentsController,
     TimetableOperationsController,
+    AcademicOperationsController,
   ],
   providers: [
     TeacherAssignmentsService,
@@ -40,6 +45,7 @@ import { TimetableOperationsController } from './timetable-operations/timetable-
     SubstitutionsService,
     AssignmentsService,
     TimetableOperationsService,
+    AcademicsOperationsService,
   ],
   exports: [
     AcademicYearsModule,
@@ -53,6 +59,7 @@ import { TimetableOperationsController } from './timetable-operations/timetable-
     SubstitutionsService,
     AssignmentsService,
     TimetableOperationsService,
+    AcademicsOperationsService,
   ],
 })
 export class AcademicsModule {}
