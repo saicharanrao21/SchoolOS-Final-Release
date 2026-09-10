@@ -1,13 +1,15 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { DatabaseService } from '../../../database/database.service';
 import { AuditService } from '../../../audit/audit.service';
 import { Prisma, AdmissionStatus, StudentStatus } from '@prisma/client';
+import { NumberingService } from '../../config/numbering.service';
 
 @Injectable()
 export class ApplicationsService {
   constructor(
     private readonly db: DatabaseService,
     private readonly audit: AuditService,
+    private readonly numbering: NumberingService,
   ) {}
 
   async create(organizationId: string, data: any, actorId?: string) {
@@ -89,7 +91,7 @@ export class ApplicationsService {
         include: {
           class: true,
           academicYear: true,
-          assignedTo: { select: { id: true, firstName: true, lastName: true } }
+          assignedTo: { select: { id: true, firstName: true, lastName: true } },
         },
       }),
       this.db.admissionApplication.count({ where }),
@@ -102,7 +104,7 @@ export class ApplicationsService {
         page: parseInt(page.toString()),
         limit: parseInt(limit.toString()),
         totalPages: Math.ceil(total / parseInt(limit.toString())),
-      }
+      },
     };
   }
 
@@ -120,7 +122,7 @@ export class ApplicationsService {
         decision: true,
         offer: true,
         assignedTo: true,
-        enquiry: true
+        enquiry: true,
       },
     });
     if (!application) throw new NotFoundException('Application not found');
@@ -157,17 +159,29 @@ export class ApplicationsService {
     if (!app) throw new NotFoundException('Application not found');
     if (app.studentId) throw new BadRequestException('Application already converted to student');
 
-    // Check if section exists in the intended class
     const section = await this.db.section.findFirst({
       where: { id: sectionId, classId: app.classId },
     });
     if (!section) throw new BadRequestException('Invalid section for the selected class');
 
     return this.db.$transaction(async (tx: Prisma.TransactionClient) => {
-      // 1. Admission Number Generation (matching Phase 3 logic)
-      const admissionNumber = await this.generateAdmissionNumberInternal(tx, app.schoolId, app.school.code || 'SCH');
+      // 1. Atomic Admission Number Generation
+      const admissionNumber = await this.numbering.generateNextNumber(organizationId, 'STUDENT_ADMISSION', app.schoolId);
 
-      // 2. Create Student
+      // 2. Create Canonical Person Record
+      const person = await tx.person.create({
+        data: {
+          organizationId,
+          firstName: app.firstName,
+          middleName: app.middleName,
+          lastName: app.lastName,
+          displayName: `${app.firstName} ${app.lastName}`,
+          dateOfBirth: app.dateOfBirth,
+          gender: app.gender,
+        },
+      });
+
+      // 3. Create Student Entity
       const student = await tx.student.create({
         data: {
           admissionNumber,
@@ -180,29 +194,30 @@ export class ApplicationsService {
           admissionDate: new Date(),
           status: StudentStatus.ACTIVE,
           school: { connect: { id: app.schoolId } },
+          person: { connect: { id: person.id } },
         },
       });
 
-      // 3. Create Enrollment
+      // 4. Create Initial Enrollment
       await tx.enrollment.create({
         data: {
           studentId: student.id,
           schoolId: app.schoolId,
           academicYearId: app.academicYearId,
           classId: app.classId,
-          sectionId: sectionId,
+          sectionId,
           campusId: app.campusId,
           enrollmentDate: new Date(),
           status: 'ACTIVE',
         },
       });
 
-      // 4. Update Application
+      // 5. Update Application Status to ENROLLED
       await tx.admissionApplication.update({
         where: { id },
         data: {
           status: AdmissionStatus.ENROLLED,
-          studentId: student.id
+          studentId: student.id,
         },
       });
 
@@ -213,16 +228,10 @@ export class ApplicationsService {
         actorId,
         organizationId,
         schoolId: app.schoolId,
-        metadata: { studentId: student.id, admissionNumber },
+        metadata: { studentId: student.id, admissionNumber, personId: person.id },
       });
 
       return student;
     });
-  }
-
-  private async generateAdmissionNumberInternal(tx: any, schoolId: string, schoolCode: string): Promise<string> {
-    const year = new Date().getFullYear().toString().slice(-2);
-    const count = await tx.student.count({ where: { schoolId } });
-    return `${schoolCode}${year}${(count + 1).toString().padStart(4, '0')}`;
   }
 }

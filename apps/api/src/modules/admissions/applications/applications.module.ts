@@ -1,8 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ApplicationsService } from './applications.service';
 import { ApplicationsController } from './applications.controller';
+import { ConfigModule as ConfigControlPlaneModule } from '../../config/config.module';
+import { AuthModule } from '../../../auth/auth.module';
 
 @Module({
+  imports: [ConfigControlPlaneModule, AuthModule],
   controllers: [ApplicationsController],
   providers: [ApplicationsService],
   exports: [ApplicationsService],
