@@ -1,142 +1,90 @@
 'use client';
 
 import React, { useState } from 'react';
-import {
-  Building,
-  ShieldCheck,
-  Zap,
-  Users,
-  AlertTriangle,
-  CheckCircle2,
-  Lock,
-  Search,
-  Plus,
-  Radio,
-  ArrowUpRight,
-  TrendingUp,
-  Activity
-} from 'lucide-react';
+import { PageHeader } from '../../../components/common/PageHeader';
+import { Card } from '../../../components/common/Card';
+import { StatusBadge } from '../../../components/common/StatusBadge';
+import { FilterBar } from '../../../components/common/FilterBar';
+import { Building, ShieldCheck, Users, TrendingUp, Plus, ArrowUpRight } from 'lucide-react';
 
-export default function PlatformDashboardPage() {
-  const [filter, setFilter] = useState('ALL');
+export default function SuperAdminPlatformDashboardPage() {
+  const [search, setSearch] = useState('');
 
   const kpis = [
-    { label: 'Total SaaS Tenants', value: '142', change: '+12 this month', icon: Building, color: 'bg-indigo-600' },
-    { label: 'Active Subscriptions', value: '128', change: '86% Conversion', icon: ShieldCheck, color: 'bg-green-600' },
-    { label: 'Total Platform Students', value: '48,250', change: 'Across all tenants', icon: Users, color: 'bg-blue-600' },
-    { label: 'Monthly Recurring Revenue', value: '$38,200', change: '+18% YoY', icon: TrendingUp, color: 'bg-purple-600' },
+    { label: 'Total SaaS Tenants', value: '142', change: '+12 this month', icon: Building, color: 'text-indigo-600', bg: 'bg-indigo-50 border-indigo-200' },
+    { label: 'Active Subscriptions', value: '128', change: '86% Conversion', icon: ShieldCheck, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
+    { label: 'Total Platform Students', value: '48,250', change: 'Across all tenants', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200' },
+    { label: 'Monthly Recurring Revenue', value: '$38,200', change: '+18% YoY', icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50 border-purple-200' },
   ];
 
-  const tenants = [
-    { id: 'org-1', name: 'Greenwood International Schools', code: 'GREENWOOD', schools: 3, students: '2,450', plan: 'Enterprise Growth', status: 'ACTIVE', joinedDate: '2025-01-15' },
-    { id: 'org-2', name: 'Oakridge Academy Network', code: 'OAKRIDGE', schools: 5, students: '4,120', plan: 'Enterprise Growth', status: 'ACTIVE', joinedDate: '2025-03-20' },
-    { id: 'org-3', name: 'St. Marks Grammar School', code: 'STMARKS', schools: 1, students: '420', plan: 'Starter Plan', status: 'TRIAL', joinedDate: '2026-08-28' },
-    { id: 'org-4', name: 'Beacon Hill Prep', code: 'BEACON', schools: 2, students: '1,100', plan: 'Enterprise Growth', status: 'SUSPENDED', joinedDate: '2025-06-10' },
+  const mockTenants = [
+    { id: 'org-1', name: 'Greenwood International Schools', code: 'GREENWOOD', schools: 3, students: '2,450', plan: 'Enterprise Growth', status: 'ACTIVE' },
+    { id: 'org-2', name: 'Oakridge Academy Network', code: 'OAKRIDGE', schools: 5, students: '4,120', plan: 'Enterprise Growth', status: 'ACTIVE' },
+    { id: 'org-3', name: 'St. Marks Grammar School', code: 'STMARKS', schools: 1, students: '420', plan: 'Starter Plan', status: 'TRIAL' },
   ];
+
+  const filtered = mockTenants.filter((t) =>
+    `${t.name} ${t.code} ${t.plan}`.toLowerCase().includes(search.toLowerCase()),
+  );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary">Superadmin Platform Control Plane</h1>
-          <p className="text-text-secondary text-sm">Centralized SaaS tenant management, subscription oversight, feature flags, and platform health</p>
-        </div>
-        <div className="flex gap-3">
-          <button className="bg-primary text-white px-5 py-2.5 rounded-button font-bold text-sm shadow-md hover:bg-primary-dark transition-all active:scale-95 flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            Onboard New Tenant
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <PageHeader
+        title="Superadmin SaaS Platform Control Plane"
+        subtitle="Provision tenant organizations, feature flags, global audit trails, and support impersonation sessions"
+        badge="Superadmin Plane"
+        badgeVariant="SUCCESS"
+        breadcrumbs={[
+          { label: 'SchoolOS', href: '/platform/dashboard' },
+          { label: 'Platform Control' },
+        ]}
+        actions={
+          <button className="flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-4 py-2.5 rounded-xl font-bold text-xs transition-all shadow-sm active:scale-95">
+            <Plus className="w-4 h-4" /> Provision New SaaS Tenant
           </button>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <FilterBar
+        searchQuery={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Filter tenant organization name, code, or plan..."
+      />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((kpi) => (
-          <div key={kpi.label} className="bg-white p-6 rounded-card shadow-card border border-surface-border transition-all hover:border-primary/20">
-            <div className="flex justify-between items-start mb-4">
-              <div className={`${kpi.color} p-3 rounded-xl text-white shadow-lg shadow-current/10`}>
-                <kpi.icon className="w-6 h-6" />
-              </div>
-              <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest bg-surface-background px-2 py-0.5 rounded border border-surface-border">
-                {kpi.change}
-              </div>
-            </div>
+          <div key={kpi.label} className="bg-white p-5 rounded-2xl border border-surface-border shadow-xs flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-text-muted">{kpi.label}</p>
-              <p className="text-3xl font-bold text-text-primary mt-1">{kpi.value}</p>
+              <p className="text-xs font-semibold text-text-muted">{kpi.label}</p>
+              <p className="text-2xl font-bold text-text-primary mt-1">{kpi.value}</p>
+              <p className="text-[11px] font-bold text-text-secondary mt-0.5">{kpi.change}</p>
+            </div>
+            <div className={`p-3 rounded-xl border ${kpi.bg} ${kpi.color}`}>
+              <kpi.icon className="w-5 h-5" />
             </div>
           </div>
         ))}
       </div>
 
-      {/* Tenant Directory Table */}
-      <div className="bg-white rounded-card shadow-card border border-surface-border overflow-hidden">
-        <div className="p-6 border-b border-surface-border flex items-center justify-between">
-          <h3 className="font-bold text-text-primary text-lg flex items-center gap-2">
-            <Building className="w-5 h-5 text-primary" />
-            Registered SaaS Tenants
-          </h3>
-          <div className="flex gap-2">
-            {['ALL', 'ACTIVE', 'TRIAL', 'SUSPENDED'].map((st) => (
-              <button
-                key={st}
-                onClick={() => setFilter(st)}
-                className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all ${
-                  filter === st
-                    ? 'bg-primary text-white shadow'
-                    : 'text-text-muted hover:bg-surface-background'
-                }`}
-              >
-                {st}
-              </button>
-            ))}
-          </div>
-        </div>
+      <Card title="Provisioned SaaS Tenant Organizations">
+        <div className="divide-y divide-surface-border text-xs font-medium">
+          {filtered.map((tenant) => (
+            <div key={tenant.id} className="py-4 flex items-center justify-between">
+              <div>
+                <p className="font-bold text-text-primary text-sm">{tenant.name}</p>
+                <p className="text-text-muted">{tenant.code} • {tenant.schools} Schools • {tenant.students} Students • Plan: {tenant.plan}</p>
+              </div>
 
-        <table className="w-full text-left text-sm">
-          <thead className="bg-surface-background border-b border-surface-border text-xs uppercase text-text-muted font-bold">
-            <tr>
-              <th className="p-4">Tenant Organization</th>
-              <th className="p-4">Code</th>
-              <th className="p-4">Schools / Campuses</th>
-              <th className="p-4">Total Students</th>
-              <th className="p-4">SaaS Plan</th>
-              <th className="p-4">Status</th>
-              <th className="p-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-surface-border">
-            {tenants
-              .filter((t) => filter === 'ALL' || t.status === filter)
-              .map((tenant) => (
-                <tr key={tenant.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="p-4 font-bold text-text-primary">{tenant.name}</td>
-                  <td className="p-4 font-mono text-xs text-text-muted">{tenant.code}</td>
-                  <td className="p-4 font-semibold text-xs text-text-secondary">{tenant.schools} Schools</td>
-                  <td className="p-4 font-bold text-text-primary">{tenant.students}</td>
-                  <td className="p-4 text-xs font-semibold text-primary">{tenant.plan}</td>
-                  <td className="p-4">
-                    <span
-                      className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full border ${
-                        tenant.status === 'ACTIVE'
-                          ? 'bg-green-50 border-green-200 text-green-700'
-                          : tenant.status === 'TRIAL'
-                          ? 'bg-blue-50 border-blue-200 text-blue-700'
-                          : 'bg-red-50 border-red-200 text-red-700'
-                      }`}
-                    >
-                      {tenant.status}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <button className="text-primary font-bold text-xs hover:underline flex items-center gap-1 ml-auto">
-                      Manage <ArrowUpRight className="w-3.5 h-3.5" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      </div>
+              <div className="flex items-center gap-3">
+                <StatusBadge status={tenant.status} />
+                <button className="text-primary font-bold hover:underline flex items-center gap-1">
+                  Manage <ArrowUpRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }
