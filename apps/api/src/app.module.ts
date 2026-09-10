@@ -47,6 +47,7 @@ import { CommunicationsModule } from './modules/communications/communications.mo
 import { BiometricModule } from './modules/biometric/biometric.module';
 import { AiAssistantModule } from './modules/ai/ai.module';
 import { CmsModule } from './modules/cms/cms.module';
+import { ConfigModule as ConfigControlPlaneModule } from './modules/config/config.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { CorrelationMiddleware } from './common/middleware/correlation.middleware';
 
@@ -103,6 +104,7 @@ import { CorrelationMiddleware } from './common/middleware/correlation.middlewar
     BiometricModule,
     AiAssistantModule,
     CmsModule,
+    ConfigControlPlaneModule,
   ],
 })
 export class AppModule implements NestModule {
