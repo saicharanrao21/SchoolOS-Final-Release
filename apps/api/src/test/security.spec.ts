@@ -4,6 +4,7 @@ import { AuditService } from '../audit/audit.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { AuthorizationService } from '../auth/policy/authorization.service';
 import { Reflector } from '@nestjs/core';
 import { ExecutionContext } from '@nestjs/common';
 
@@ -107,6 +108,7 @@ describe('Enterprise Security Hardening Test Suite (Phase 30)', () => {
         PlatformTenantsService,
         DmsService,
         PermissionsGuard,
+        AuthorizationService,
         Reflector,
         { provide: DatabaseService, useValue: db },
         { provide: AuditService, useValue: audit },
@@ -213,7 +215,7 @@ describe('Enterprise Security Hardening Test Suite (Phase 30)', () => {
 
   // 6. RBAC Guard Enforcement
   describe('RBAC Permissions Guard', () => {
-    it('should allow SUPER_ADMIN role bypass', () => {
+    it('should allow SUPER_ADMIN role bypass', async () => {
       const context: any = {
         getHandler: () => ({}),
         getClass: () => ({}),
@@ -225,10 +227,10 @@ describe('Enterprise Security Hardening Test Suite (Phase 30)', () => {
       const reflector: any = { getAllAndOverride: () => ['platform.tenants.manage'] };
       const guard = new PermissionsGuard(reflector);
 
-      expect(guard.canActivate(context)).toBe(true);
+      expect(await guard.canActivate(context)).toBe(true);
     });
 
-    it('should reject user missing required permission', () => {
+    it('should reject user missing required permission', async () => {
       const context: any = {
         getHandler: () => ({}),
         getClass: () => ({}),
@@ -240,7 +242,7 @@ describe('Enterprise Security Hardening Test Suite (Phase 30)', () => {
       const reflector: any = { getAllAndOverride: () => ['billing.admin'] };
       const guard = new PermissionsGuard(reflector);
 
-      expect(guard.canActivate(context)).toBe(false);
+      expect(await guard.canActivate(context)).toBe(false);
     });
   });
 });

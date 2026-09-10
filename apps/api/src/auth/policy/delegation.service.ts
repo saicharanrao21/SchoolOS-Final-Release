@@ -3,6 +3,7 @@ import { DatabaseService } from '../../database/database.service';
 import { AuditService } from '../../audit/audit.service';
 import { AuthorizationService } from './authorization.service';
 import { AuditSeverity } from '@prisma/client';
+import { DEFAULT_ROLE_PERMISSIONS } from '../permissions/permission.registry';
 
 @Injectable()
 export class DelegationService {
@@ -32,20 +33,44 @@ export class DelegationService {
     const delegatee = await this.db.user.findFirst({
       where: { id: data.delegateeId, organizationId },
     });
-    if (!delegatee) throw new NotFoundException('Delegatee user not found in organization');
+    if (!delegatee || delegatee.status !== 'ACTIVE') {
+      throw new NotFoundException('Delegatee user not found or inactive in organization');
+    }
 
-    // Escalation Prevention: Verify delegator possesses all delegated permissions
+    // Escalation Prevention 1: Delegator cannot delegate a role if they don't possess its permissions
     const delegatorPerms = await this.authz.resolveEffectivePermissions({
       userId: delegatorId,
       organizationId,
       schoolId: data.schoolId,
+      campusId: data.campusId,
     });
 
+    let requestedPermissions: string[] = [];
+    if (data.roleId) {
+      const role = await this.db.role.findUnique({
+        where: { id: data.roleId },
+        include: { permissions: { include: { permission: true } } },
+      });
+      if (!role) throw new NotFoundException('Target role for delegation not found');
+
+      if (role.name === 'SUPER_ADMIN') {
+        throw new ForbiddenException('Escalation Blocked: PLATFORM_SUPER_ADMIN role cannot be delegated');
+      }
+
+      requestedPermissions = [
+        ...(DEFAULT_ROLE_PERMISSIONS[role.name] || []),
+        ...role.permissions.map((rp) => rp.permission.name),
+      ];
+    }
+
     if (data.permissions && data.permissions.length > 0) {
-      for (const perm of data.permissions) {
-        if (!delegatorPerms.has(perm)) {
-          throw new ForbiddenException(`Delegation escalation blocked: You do not possess permission '${perm}'`);
-        }
+      requestedPermissions.push(...data.permissions);
+    }
+
+    // Escalation Prevention 2: Ensure delegator possesses every requested permission
+    for (const perm of requestedPermissions) {
+      if (!delegatorPerms.has(perm)) {
+        throw new ForbiddenException(`Delegation escalation blocked: Delegator does not possess permission '${perm}'`);
       }
     }
 
@@ -57,7 +82,7 @@ export class DelegationService {
         delegatorId,
         delegateeId: data.delegateeId,
         roleId: data.roleId,
-        permissions: data.permissions || [],
+        permissions: requestedPermissions,
         validFrom: new Date(),
         validUntil: new Date(data.validUntil),
         reason: data.reason,

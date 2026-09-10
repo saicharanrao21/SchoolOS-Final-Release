@@ -1,4 +1,4 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
 import { AuthorizationService } from '../policy/authorization.service';
@@ -15,6 +15,7 @@ export class PermissionsGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
+
     if (!requiredPermissions || requiredPermissions.length === 0) {
       return true;
     }
@@ -23,24 +24,49 @@ export class PermissionsGuard implements CanActivate {
     const user = req.user;
     if (!user) return false;
 
-    // Super Admin bypass
+    // Super Admin direct bypass
     if (user.roles?.includes('SUPER_ADMIN')) {
       return true;
     }
 
-    const schoolId = req.query?.schoolId || req.body?.schoolId;
+    const schoolId = req.query?.schoolId || req.body?.schoolId || req.params?.schoolId;
+    const campusId = req.query?.campusId || req.body?.campusId || req.params?.campusId;
+    const academicYearId = req.query?.academicYearId || req.body?.academicYearId;
 
     if (this.authzService) {
-      const effective = await this.authzService.resolveEffectivePermissions({
+      // Single Authoritative Evaluation Engine
+      const result = await this.authzService.authorize({
         userId: user.id,
         organizationId: user.org,
         schoolId,
+        campusId,
+        academicYearId,
       });
 
-      return requiredPermissions.every((perm) => effective.has(perm));
+      if (!result.allowed) {
+        throw new ForbiddenException(result.reason || 'Access denied');
+      }
+
+      // Check each required permission against DB-resolved effective permissions
+      for (const perm of requiredPermissions) {
+        const permResult = await this.authzService.authorize({
+          userId: user.id,
+          organizationId: user.org,
+          permissionKey: perm,
+          schoolId,
+          campusId,
+          academicYearId,
+        });
+
+        if (!permResult.allowed) {
+          throw new ForbiddenException(permResult.reason || `Permission '${perm}' denied for target scope`);
+        }
+      }
+
+      return true;
     }
 
-    // Fallback array check
+    // Fallback array check if authzService is omitted in unit test harness
     return requiredPermissions.every((permission) => user.permissions?.includes(permission));
   }
 }
