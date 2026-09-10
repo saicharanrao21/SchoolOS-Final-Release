@@ -6,6 +6,11 @@ import { PermissionsGuard } from '../../auth/guards/permissions.guard';
 import { PolicyGuard } from '../../auth/guards/policy.guard';
 import { Permissions } from '../../auth/decorators/permissions.decorator';
 import { StudentStatus } from '@prisma/client';
+import { CreateStudentDto } from './dto/create-student.dto';
+import { UpdateStudentDto } from './dto/update-student.dto';
+import { TransferStudentDto } from './dto/transfer-student.dto';
+import { CreateStudentNoteDto } from './dto/create-student-note.dto';
+import { StudentFilterDto } from './dto/student-filter.dto';
 
 @Controller('students')
 @UseGuards(AuthGuard('jwt'), PermissionsGuard, PolicyGuard)
@@ -14,15 +19,19 @@ export class StudentsController {
 
   @Post()
   @Permissions('students.manage')
-  create(@User('org') organizationId: string, @Body() data: any, @User('id') actorId: string) {
-    return this.studentsService.create(organizationId, data, actorId);
+  create(
+    @User('org') organizationId: string,
+    @Body() dto: CreateStudentDto,
+    @User('id') actorId: string,
+  ) {
+    return this.studentsService.create(organizationId, dto, actorId);
   }
 
   @Get()
   @Permissions('students.read')
   findAll(
     @User('org') organizationId: string,
-    @Query() filters: any,
+    @Query() filters: StudentFilterDto,
   ) {
     return this.studentsService.findAll(organizationId, filters);
   }
@@ -57,10 +66,10 @@ export class StudentsController {
   transfer(
     @User('org') organizationId: string,
     @Param('id') id: string,
-    @Body() transferData: any,
+    @Body() dto: TransferStudentDto,
     @User('id') actorId: string,
   ) {
-    return this.studentsService.transferStudent(organizationId, id, actorId, transferData);
+    return this.studentsService.transferStudent(organizationId, id, actorId, dto);
   }
 
   @Post(':id/notes')
@@ -69,9 +78,9 @@ export class StudentsController {
     @User('org') organizationId: string,
     @Param('id') id: string,
     @User('id') authorId: string,
-    @Body() data: any,
+    @Body() dto: CreateStudentNoteDto,
   ) {
-    return this.studentsService.addStudentNote(organizationId, id, authorId, data);
+    return this.studentsService.addStudentNote(organizationId, id, authorId, dto);
   }
 
   @Patch(':id')
@@ -79,10 +88,10 @@ export class StudentsController {
   update(
     @User('org') organizationId: string,
     @Param('id') id: string,
-    @Body() data: any,
+    @Body() dto: UpdateStudentDto,
     @User('id') actorId: string,
   ) {
-    return this.studentsService.update(organizationId, id, data, actorId);
+    return this.studentsService.update(organizationId, id, dto, actorId);
   }
 
   @Patch(':id/status')

@@ -1,10 +1,18 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { Prisma, StudentStatus } from '@prisma/client';
 import { AuditService } from '../../audit/audit.service';
 import { NumberingService } from '../config/numbering.service';
+import { AuthorizationService } from '../../auth/policy/authorization.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { CreateStudentDto } from './dto/create-student.dto';
+import { UpdateStudentDto } from './dto/update-student.dto';
+import { TransferStudentDto } from './dto/transfer-student.dto';
+import { CreateStudentNoteDto } from './dto/create-student-note.dto';
+import { StudentFilterDto } from './dto/student-filter.dto';
+import { normalizeName, normalizePhone, normalizeEmail } from './utils/identity-normalization.util';
 
-export interface Student360Result {
+export interface Student360Section {
   student: any;
   currentEnrollment: any;
   enrollmentHistory: any[];
@@ -26,76 +34,105 @@ export interface Student360Result {
 
 @Injectable()
 export class StudentsService {
+  private readonly logger = new Logger(StudentsService.name);
+
   constructor(
     private readonly db: DatabaseService,
     private readonly audit: AuditService,
     private readonly numbering: NumberingService,
+    private readonly authz: AuthorizationService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  async create(organizationId: string, data: any, actorId?: string) {
+  async create(organizationId: string, dto: CreateStudentDto, actorId: string) {
+    // 1. Service-Level Scope Authorization
+    const canAccess = await this.authz.canAccessScope(actorId, organizationId, dto.schoolId);
+    if (!canAccess) {
+      throw new ForbiddenException(`Service Authorization Blocked: Actor unauthorized for school '${dto.schoolId}'`);
+    }
+
+    // 2. Resolve School
     const school = await this.db.school.findFirst({
-      where: { id: data.schoolId, organizationId },
+      where: { id: dto.schoolId, organizationId },
     });
-    if (!school) throw new NotFoundException('School not found under organization');
+    if (!school) throw new NotFoundException('Target school not found under organization');
+
+    // 3. Graph Validation for Initial Enrollment
+    if (dto.enrollment) {
+      await this.validateEnrollmentGraph(
+        organizationId,
+        school.id,
+        dto.enrollment.campusId,
+        dto.enrollment.academicYearId,
+        dto.enrollment.classId,
+        dto.enrollment.sectionId,
+      );
+    }
+
+    // 4. Validate House linkage
+    if (dto.houseId) {
+      const house = await this.db.house.findFirst({
+        where: { id: dto.houseId, schoolId: school.id },
+      });
+      if (!house) throw new BadRequestException('House does not belong to target school');
+    }
 
     return this.db.$transaction(async (tx) => {
-      // 1. Generate Atomic Concurrency-Safe Admission Number
+      // Atomic Concurrency-Safe Admission Numbering
       const admissionNumber = await this.numbering.generateNextNumber(
         organizationId,
         'STUDENT_ADMISSION',
         school.id,
       );
 
-      // 2. Create Canonical Person Entity
+      // Create Canonical Person Identity
       const person = await tx.person.create({
         data: {
           organizationId,
-          firstName: data.firstName,
-          middleName: data.middleName,
-          lastName: data.lastName,
-          displayName: data.displayName || `${data.firstName} ${data.lastName}`,
-          dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
-          gender: data.gender,
-          nationality: data.nationality,
-          primaryLanguage: data.primaryLanguage,
-          profilePhoto: data.profilePhoto,
+          firstName: dto.firstName,
+          middleName: dto.middleName,
+          lastName: dto.lastName,
+          displayName: dto.displayName || `${dto.firstName} ${dto.lastName}`,
+          dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
+          gender: dto.gender,
+          nationality: dto.nationality,
+          profilePhoto: dto.profilePhoto,
         },
       });
 
-      // 3. Create Student Entity
+      // Create Student
       const student = await tx.student.create({
         data: {
           admissionNumber,
-          firstName: data.firstName,
-          middleName: data.middleName,
-          lastName: data.lastName,
-          displayName: data.displayName || `${data.firstName} ${data.lastName}`,
-          dateOfBirth: new Date(data.dateOfBirth),
-          gender: data.gender,
-          admissionDate: data.admissionDate ? new Date(data.admissionDate) : new Date(),
-          status: data.status || StudentStatus.APPLICANT,
-          nationality: data.nationality,
-          bloodGroup: data.bloodGroup,
-          religion: data.religion,
-          category: data.category,
-          school: { connect: { id: data.schoolId } },
+          firstName: dto.firstName,
+          middleName: dto.middleName,
+          lastName: dto.lastName,
+          displayName: dto.displayName || `${dto.firstName} ${dto.lastName}`,
+          dateOfBirth: new Date(dto.dateOfBirth),
+          gender: dto.gender,
+          admissionDate: dto.admissionDate ? new Date(dto.admissionDate) : new Date(),
+          status: dto.status || StudentStatus.APPLICANT,
+          nationality: dto.nationality,
+          bloodGroup: dto.bloodGroup,
+          religion: dto.religion,
+          category: dto.category,
+          school: { connect: { id: school.id } },
           person: { connect: { id: person.id } },
-          house: data.houseId ? { connect: { id: data.houseId } } : undefined,
-          metadata: data.metadata || {},
+          house: dto.houseId ? { connect: { id: dto.houseId } } : undefined,
         },
       });
 
-      // 4. Initial Enrollment if provided
-      if (data.enrollment) {
+      // Create Initial Active Enrollment
+      if (dto.enrollment) {
         await tx.enrollment.create({
           data: {
-            student: { connect: { id: student.id } },
+            studentId: student.id,
             schoolId: school.id,
-            academicYear: { connect: { id: data.enrollment.academicYearId } },
-            class: { connect: { id: data.enrollment.classId } },
-            section: { connect: { id: data.enrollment.sectionId } },
-            campus: { connect: { id: data.enrollment.campusId } },
-            rollNumber: data.enrollment.rollNumber,
+            campusId: dto.enrollment.campusId,
+            academicYearId: dto.enrollment.academicYearId,
+            classId: dto.enrollment.classId,
+            sectionId: dto.enrollment.sectionId,
+            rollNumber: dto.enrollment.rollNumber,
             enrollmentDate: student.admissionDate,
             status: 'ACTIVE',
           },
@@ -103,7 +140,7 @@ export class StudentsService {
       }
 
       await this.audit.log({
-        action: 'student.create',
+        action: 'student.created',
         resource: 'Student',
         resourceId: student.id,
         actorId,
@@ -112,18 +149,113 @@ export class StudentsService {
         metadata: { admissionNumber, personId: person.id },
       });
 
+      this.eventEmitter.emit('student.created', {
+        studentId: student.id,
+        organizationId,
+        schoolId: school.id,
+      });
+
       return student;
     });
   }
 
-  async getStudent360(organizationId: string, studentId: string, requestingUser: any): Promise<Student360Result> {
+  async transferStudent(organizationId: string, studentId: string, actorId: string, dto: TransferStudentDto) {
+    const student = await this.findOne(organizationId, studentId);
+    const targetSchoolId = dto.toSchoolId || student.schoolId;
+
+    // Service-Level Authorization for Source and Target Schools
+    const canAccessSource = await this.authz.canAccessScope(actorId, organizationId, student.schoolId);
+    const canAccessTarget = await this.authz.canAccessScope(actorId, organizationId, targetSchoolId);
+
+    if (!canAccessSource || !canAccessTarget) {
+      throw new ForbiddenException('Service Authorization Blocked: Actor unauthorized for transfer target scope');
+    }
+
+    // Validate Target Hierarchy Consistency
+    await this.validateEnrollmentGraph(
+      organizationId,
+      targetSchoolId,
+      dto.toCampusId,
+      dto.toAcademicYearId,
+      dto.toClassId,
+      dto.toSectionId,
+    );
+
+    return this.db.$transaction(async (tx) => {
+      // Concurrency & Active Enrollment Guard: Set existing active enrollments to TRANSFERRED
+      await tx.enrollment.updateMany({
+        where: { studentId, status: 'ACTIVE' },
+        data: { status: 'TRANSFERRED' },
+      });
+
+      // Create Transfer Audit History
+      const transfer = await tx.studentTransfer.create({
+        data: {
+          studentId,
+          fromSchoolId: student.schoolId,
+          toSchoolId: targetSchoolId,
+          fromCampusId: student.enrollments[0]?.campusId || student.schoolId,
+          toCampusId: dto.toCampusId,
+          reason: dto.reason,
+          authorizedById: actorId,
+          transferDate: new Date(),
+        },
+      });
+
+      // Create New Active Enrollment
+      const newEnrollment = await tx.enrollment.create({
+        data: {
+          studentId,
+          schoolId: targetSchoolId,
+          campusId: dto.toCampusId,
+          academicYearId: dto.toAcademicYearId,
+          classId: dto.toClassId,
+          sectionId: dto.toSectionId,
+          enrollmentDate: new Date(),
+          status: 'ACTIVE',
+        },
+      });
+
+      if (targetSchoolId !== student.schoolId) {
+        await tx.student.update({
+          where: { id: studentId },
+          data: { schoolId: targetSchoolId },
+        });
+      }
+
+      await this.audit.log({
+        action: 'student.transferred',
+        resource: 'Student',
+        resourceId: studentId,
+        actorId,
+        organizationId,
+        schoolId: targetSchoolId,
+        metadata: { fromSchoolId: student.schoolId, toSchoolId: targetSchoolId, reason: dto.reason },
+      });
+
+      this.eventEmitter.emit('student.transferred', {
+        studentId,
+        fromSchoolId: student.schoolId,
+        toSchoolId: targetSchoolId,
+      });
+
+      return { transfer, newEnrollment };
+    });
+  }
+
+  async getStudent360(organizationId: string, studentId: string, requestingUser: any): Promise<Student360Section> {
     const student = await this.findOne(organizationId, studentId);
 
-    // Parent/Guardian Authorization Defense
+    // Parent IDOR Defense: Ensure guardian-child relationship is active
     if (requestingUser.roles?.includes('PARENT')) {
-      const isLinkedGuardian = student.guardians.some((g) => g.guardian.userId === requestingUser.id);
-      if (!isLinkedGuardian) {
-        throw new ForbiddenException('Parent IDOR Defense: You are not authorized to view unlinked student profiles');
+      const guardianRel = await this.db.guardianStudent.findFirst({
+        where: {
+          studentId,
+          guardian: { userId: requestingUser.id },
+        },
+      });
+      if (!guardianRel) {
+        throw new ForbiddenException('Parent IDOR Defense: You are not authorized to view unlinked student profile');
       }
     }
 
@@ -134,16 +266,26 @@ export class StudentsService {
 
     const currentEnrollment = student.enrollments.find((e) => e.status === 'ACTIVE') || student.enrollments[0];
 
-    // Attendance Summary
-    const attendanceRecords = await this.db.studentAttendanceRecord.findMany({
+    // Database Aggregations for Attendance (NO full array memory loads)
+    const attendanceStats = await this.db.studentAttendanceRecord.groupBy({
+      by: ['status'],
       where: { studentId },
+      _count: { status: true },
     });
-    const totalDays = attendanceRecords.length;
-    const presentDays = attendanceRecords.filter((a) => a.status === 'PRESENT').length;
-    const absentDays = attendanceRecords.filter((a) => a.status === 'ABSENT').length;
+
+    let presentDays = 0;
+    let absentDays = 0;
+    let totalDays = 0;
+
+    for (const stat of attendanceStats) {
+      const count = stat._count.status;
+      totalDays += count;
+      if (stat.status === 'PRESENT') presentDays += count;
+      if (stat.status === 'ABSENT') absentDays += count;
+    }
     const percentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 100;
 
-    // Finance Summary
+    // Database Aggregations for Finance
     const feeAccount = await this.db.studentFeeAccount.findUnique({
       where: { studentId },
     });
@@ -151,7 +293,7 @@ export class StudentsService {
     const totalPaid = feeAccount ? Number(feeAccount.totalPaid) : 0;
     const outstandingBalance = feeAccount ? Number(feeAccount.balance) : 0;
 
-    // Filter Private Notes unless authorized staff
+    // Privacy-Aware Notes Filter
     const notes = await this.db.studentNote.findMany({
       where: {
         studentId,
@@ -173,74 +315,6 @@ export class StudentsService {
     };
   }
 
-  async transferStudent(organizationId: string, studentId: string, actorId: string, data: {
-    toSchoolId?: string;
-    toCampusId: string;
-    toAcademicYearId: string;
-    toClassId: string;
-    toSectionId: string;
-    reason: string;
-  }) {
-    const student = await this.findOne(organizationId, studentId);
-    const targetSchoolId = data.toSchoolId || student.schoolId;
-
-    return this.db.$transaction(async (tx) => {
-      // 1. Mark current active enrollments as TRANSFERRED
-      await tx.enrollment.updateMany({
-        where: { studentId, status: 'ACTIVE' },
-        data: { status: 'TRANSFERRED' },
-      });
-
-      // 2. Create StudentTransfer History Record
-      const transfer = await tx.studentTransfer.create({
-        data: {
-          studentId,
-          fromSchoolId: student.schoolId,
-          toSchoolId: targetSchoolId,
-          fromCampusId: student.enrollments[0]?.campusId || student.schoolId,
-          toCampusId: data.toCampusId,
-          reason: data.reason,
-          authorizedById: actorId,
-          transferDate: new Date(),
-        },
-      });
-
-      // 3. Create New Active Enrollment Record preserving past history
-      const newEnrollment = await tx.enrollment.create({
-        data: {
-          studentId,
-          schoolId: targetSchoolId,
-          campusId: data.toCampusId,
-          academicYearId: data.toAcademicYearId,
-          classId: data.toClassId,
-          sectionId: data.toSectionId,
-          enrollmentDate: new Date(),
-          status: 'ACTIVE',
-        },
-      });
-
-      // 4. Update student schoolId if cross-school transfer
-      if (targetSchoolId !== student.schoolId) {
-        await tx.student.update({
-          where: { id: studentId },
-          data: { schoolId: targetSchoolId },
-        });
-      }
-
-      await this.audit.log({
-        action: 'student.transfer',
-        resource: 'Student',
-        resourceId: studentId,
-        actorId,
-        organizationId,
-        schoolId: targetSchoolId,
-        metadata: { fromSchoolId: student.schoolId, toSchoolId: targetSchoolId, reason: data.reason },
-      });
-
-      return { transfer, newEnrollment };
-    });
-  }
-
   async detectDuplicates(organizationId: string, schoolId?: string) {
     const students = await this.db.student.findMany({
       where: { school: { organizationId }, ...(schoolId ? { schoolId } : {}) },
@@ -252,6 +326,8 @@ export class StudentsService {
         admissionNumber: true,
         schoolId: true,
       },
+      take: 200,
+      orderBy: { createdAt: 'desc' },
     });
 
     const duplicates: any[] = [];
@@ -260,11 +336,14 @@ export class StudentsService {
         const s1 = students[i];
         const s2 = students[j];
 
-        const nameMatch = s1.firstName.toLowerCase() === s2.firstName.toLowerCase() && s1.lastName.toLowerCase() === s2.lastName.toLowerCase();
+        const norm1 = `${normalizeName(s1.firstName)}_${normalizeName(s1.lastName)}`;
+        const norm2 = `${normalizeName(s2.firstName)}_${normalizeName(s2.lastName)}`;
+
+        const nameMatch = norm1 === norm2;
         const dobMatch = s1.dateOfBirth?.toISOString().slice(0, 10) === s2.dateOfBirth?.toISOString().slice(0, 10);
 
         if (nameMatch && dobMatch) {
-          duplicates.push({ student1: s1, student2: s2, matchReason: 'Identical Name and Date of Birth' });
+          duplicates.push({ student1: s1, student2: s2, matchReason: 'Normalized Name and Date of Birth Match' });
         }
       }
     }
@@ -272,21 +351,83 @@ export class StudentsService {
     return duplicates;
   }
 
-  async addStudentNote(organizationId: string, studentId: string, authorId: string, data: { category: string; content: string; isPrivate?: boolean }) {
-    await this.findOne(organizationId, studentId);
+  async update(organizationId: string, id: string, dto: UpdateStudentDto, actorId?: string) {
+    const student = await this.findOne(organizationId, id);
+
+    // Service-Level Authorization
+    const canAccess = await this.authz.canAccessScope(actorId || '', organizationId, student.schoolId);
+    if (actorId && !canAccess) {
+      throw new ForbiddenException('Service Authorization Blocked: Actor unauthorized for student school scope');
+    }
+
+    return this.db.$transaction(async (tx) => {
+      const updated = await tx.student.update({
+        where: { id },
+        data: {
+          firstName: dto.firstName,
+          middleName: dto.middleName,
+          lastName: dto.lastName,
+          displayName: dto.displayName,
+          dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
+          gender: dto.gender,
+          status: dto.status,
+          nationality: dto.nationality,
+          bloodGroup: dto.bloodGroup,
+          religion: dto.religion,
+          category: dto.category,
+          houseId: dto.houseId,
+        },
+      });
+
+      // Synchronize Canonical Person Entity
+      if (student.personId) {
+        await tx.person.update({
+          where: { id: student.personId },
+          data: {
+            firstName: dto.firstName,
+            middleName: dto.middleName,
+            lastName: dto.lastName,
+            displayName: dto.displayName,
+            dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
+            gender: dto.gender,
+            nationality: dto.nationality,
+          },
+        });
+      }
+
+      await this.audit.log({
+        action: 'student.updated',
+        resource: 'Student',
+        resourceId: id,
+        actorId,
+        organizationId,
+        schoolId: student.schoolId,
+      });
+
+      return updated;
+    });
+  }
+
+  async addStudentNote(organizationId: string, studentId: string, authorId: string, dto: CreateStudentNoteDto) {
+    const student = await this.findOne(organizationId, studentId);
+
+    const canAccess = await this.authz.canAccessScope(authorId, organizationId, student.schoolId);
+    if (!canAccess) {
+      throw new ForbiddenException('Service Authorization Blocked: Actor unauthorized to write student notes');
+    }
 
     return this.db.studentNote.create({
       data: {
         studentId,
         authorId,
-        category: data.category || 'GENERAL',
-        content: data.content,
-        isPrivate: data.isPrivate ?? false,
+        category: dto.category || 'GENERAL',
+        content: dto.content,
+        isPrivate: dto.isPrivate ?? false,
       },
     });
   }
 
-  async findAll(organizationId: string, filters: any) {
+  async findAll(organizationId: string, filters: StudentFilterDto) {
     const {
       page = 1,
       limit = 10,
@@ -306,7 +447,7 @@ export class StudentsService {
     };
 
     if (schoolId) where.schoolId = schoolId;
-    if (status) where.status = status;
+    if (status) where.status = status as StudentStatus;
 
     if (search) {
       where.OR = [
@@ -338,7 +479,7 @@ export class StudentsService {
           },
         },
         skip,
-        take: parseInt(limit),
+        take: parseInt(String(limit)),
         orderBy: { createdAt: 'desc' },
       }),
       this.db.student.count({ where }),
@@ -348,8 +489,8 @@ export class StudentsService {
       items,
       meta: {
         total,
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: parseInt(String(page)),
+        limit: parseInt(String(limit)),
         totalPages: Math.ceil(total / limit),
       },
     };
@@ -361,6 +502,7 @@ export class StudentsService {
       include: {
         school: true,
         house: true,
+        person: true,
         enrollments: {
           include: { academicYear: true, class: true, section: true, campus: true },
           orderBy: { enrollmentDate: 'desc' },
@@ -374,27 +516,8 @@ export class StudentsService {
       },
     });
 
-    if (!student) throw new NotFoundException('Student not found');
+    if (!student) throw new NotFoundException('Student not found under organization');
     return student;
-  }
-
-  async update(organizationId: string, id: string, data: Prisma.StudentUpdateInput, actorId?: string) {
-    const student = await this.findOne(organizationId, id);
-    const updated = await this.db.student.update({
-      where: { id },
-      data,
-    });
-
-    await this.audit.log({
-      action: 'student.update',
-      resource: 'Student',
-      resourceId: id,
-      actorId,
-      organizationId,
-      schoolId: student.schoolId,
-    });
-
-    return updated;
   }
 
   async updateStatus(organizationId: string, id: string, status: StudentStatus, actorId?: string, notes?: string) {
@@ -415,6 +538,44 @@ export class StudentsService {
       metadata: { previousStatus: student.status, notes },
     });
 
+    this.eventEmitter.emit('student.status.changed', { studentId: id, previousStatus: student.status, newStatus: status });
+
     return updated;
+  }
+
+  private async validateEnrollmentGraph(
+    organizationId: string,
+    schoolId: string,
+    campusId: string,
+    academicYearId: string,
+    classId: string,
+    sectionId: string,
+  ) {
+    // 1. Campus belongs to School
+    const campus = await this.db.campus.findFirst({
+      where: { id: campusId, schoolId },
+    });
+    if (!campus) throw new BadRequestException(`Campus '${campusId}' does not belong to school '${schoolId}'`);
+
+    // 2. AcademicYear belongs to School
+    const academicYear = await this.db.academicYear.findFirst({
+      where: { id: academicYearId, schoolId },
+    });
+    if (!academicYear) throw new BadRequestException(`Academic Year '${academicYearId}' does not belong to school '${schoolId}'`);
+    if (academicYear.status === 'CLOSED' || academicYear.status === 'ARCHIVED') {
+      throw new BadRequestException(`Academic Year '${academicYear.name}' is CLOSED/ARCHIVED and cannot accept new enrollments`);
+    }
+
+    // 3. Class belongs to School
+    const targetClass = await this.db.class.findFirst({
+      where: { id: classId, schoolId },
+    });
+    if (!targetClass) throw new BadRequestException(`Class '${classId}' does not belong to school '${schoolId}'`);
+
+    // 4. Section belongs to Class
+    const section = await this.db.section.findFirst({
+      where: { id: sectionId, classId },
+    });
+    if (!section) throw new BadRequestException(`Section '${sectionId}' does not belong to class '${classId}'`);
   }
 }
