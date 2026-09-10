@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:schoolos_mobile/theme/app_theme.dart';
 import 'package:schoolos_mobile/networking/api_client.dart';
 import 'package:schoolos_mobile/features/parent/data/repositories/parent_repository.dart';
 import 'package:schoolos_mobile/features/parent/presentation/bloc/parent_bloc.dart';
@@ -54,10 +55,115 @@ class RoleShell extends StatefulWidget {
 
 class _RoleShellState extends State<RoleShell> {
   int _index = 0;
+  String _activeSchool = 'SchoolOS Main Campus';
+  String _activeSession = '2026-2027';
+
+  void _showContextDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Active Workspace Context', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.school, color: AppTheme.primaryColor),
+                title: const Text('Main Campus'),
+                subtitle: const Text('Active School'),
+                trailing: const Icon(Icons.check_circle, color: AppTheme.primaryColor),
+                onTap: () {
+                  setState(() => _activeSchool = 'SchoolOS Main Campus');
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.school_outlined, color: AppTheme.navyColor),
+                title: const Text('North Branch'),
+                subtitle: const Text('Secondary Campus'),
+                onTap: () {
+                  setState(() => _activeSchool = 'SchoolOS North Branch');
+                  Navigator.pop(context);
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.calendar_month, color: AppTheme.navyColor),
+                title: Text('Session: $_activeSession'),
+                subtitle: const Text('Academic Year'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: GestureDetector(
+          onTap: _showContextDialog,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.title,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.navyColor),
+              ),
+              Row(
+                children: [
+                  Text(
+                    '$_activeSchool • $_activeSession',
+                    style: const TextStyle(fontSize: 10, color: Colors.black54, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(width: 2),
+                  const Icon(Icons.arrow_drop_down, size: 14, color: Colors.black54),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search, size: 20),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Search Command Center Launched')),
+              );
+            },
+          ),
+          IconButton(
+            icon: Stack(
+              children: [
+                const Icon(Icons.notifications_outlined, size: 22),
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                    constraints: const BoxConstraints(minWidth: 8, minHeight: 8),
+                  ),
+                ),
+              ],
+            ),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Notification Center Drawer')),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: IndexedStack(
         index: _index,
         children: widget.pages,
